@@ -177,6 +177,15 @@
             const soon = isSoon(e);
             const img = getSmartImageUrl(e.obrazek);
 
+            const brMatch = (e.popis || '').match(/<br\s*\/?>/i);
+            let descText;
+            if (brMatch) {
+              descText = e.popis.slice(0, brMatch.index).replace(/<[^>]+>/g, '').trim();
+            } else {
+              const plain = (e.popis || '').replace(/<[^>]+>/g, '').trim();
+              descText = plain.length > 220 ? plain.slice(0, 220).trim() + '…' : plain;
+            }
+
             const card = document.createElement('div');
             card.className = 'event-card';
             card.dataset.mine = canSee ? '1' : '0';
@@ -199,8 +208,9 @@
               <div class="body">
                 <h3>${canSee ? `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}">${e.nazev || ''}</a>` : (e.nazev || '')}</h3>
                 <div class="price">${formatDateRange(e['datum od'], e.datum_do) || 'Termín bude upřesněn'}</div>
-                <div class="meta">${e['místo'] || ''}${e['místo'] ? ' · ' : ''}Registrace do ${e.registrace_konec || '—'}</div>
-                <p class="desc">${(e.popis || '').replace(/<[^>]*>/g, '')}</p>
+                ${e['místo'] ? `<div class="meta">${e['místo']}</div>` : ''}
+                <div class="meta">Registrace do ${e.registrace_konec || '—'}</div>
+                <p class="desc">${descText}</p>
                 <div class="footer-row">${footer}</div>
               </div>
             `;
