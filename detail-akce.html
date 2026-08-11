@@ -136,8 +136,16 @@
         if (urlMatch) discordLinkHtml = `<p class="discord-link-inline">💬 <a href="${urlMatch[0]}" target="_blank">Diskuze a dotazy na Discordu</a></p>`;
       }
 
-      const leadTextRaw = (event.popis || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').trim();
-      const leadText = leadTextRaw.length > 170 ? leadTextRaw.slice(0, 170).trim() + '…' : leadTextRaw;
+      // Ochutnávka popisu = text do prvního <br> (přirozený úvodní odstavec),
+      // jen když popis nemá žádný <br> vůbec, padneme na bezpečné oříznutí délky
+      const brMatch = (event.popis || '').match(/<br\s*\/?>/i);
+      let leadText;
+      if (brMatch) {
+        leadText = event.popis.slice(0, brMatch.index).replace(/<[^>]+>/g, '').trim();
+      } else {
+        const plain = (event.popis || '').replace(/<[^>]+>/g, '').trim();
+        leadText = plain.length > 220 ? plain.slice(0, 220).trim() + '…' : plain;
+      }
       const leadHtml = leadText
         ? `<p class="lead-teaser">${leadText} <a href="#popis" class="read-more-link">Číst dál ↓</a></p>`
         : '';
@@ -170,7 +178,6 @@
           </div>
           <div>
             <div class="detail-card">
-              <span class="eyebrow">${event.event_id}</span>
               <h1>${event.nazev || ''}</h1>
               <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
 
