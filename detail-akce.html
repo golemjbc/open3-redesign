@@ -70,6 +70,27 @@
       }
       return url;
     }
+    function formatDateRange(fromStr, toStr) {
+      fromStr = (fromStr || '').trim();
+      toStr = (toStr || '').trim();
+      if (!fromStr && !toStr) return '';
+      if (!fromStr) return toStr;
+      if (!toStr) return fromStr;
+      const parse = (s) => {
+        const parts = s.split('.').map(p => p.trim()).filter(Boolean);
+        return parts.length >= 3 ? { day: parts[0], month: parts[1], year: parts[2] } : null;
+      };
+      const from = parse(fromStr);
+      const to = parse(toStr);
+      if (!from || !to) return `${fromStr} – ${toStr}`;
+      if (from.year === to.year && from.month === to.month) {
+        return `${from.day}.–${to.day}.${to.month}.${to.year}`;
+      }
+      if (from.year === to.year) {
+        return `${from.day}.${from.month}. – ${to.day}.${to.month}.${to.year}`;
+      }
+      return `${fromStr} – ${toStr}`;
+    }
     function parseImageUrls(cellValue) {
       if (!cellValue) return [];
       return cellValue.split(';').map(u => u.trim()).filter(Boolean);
@@ -179,12 +200,13 @@
           <div>
             <div class="detail-card">
               <h1>${event.nazev || ''}</h1>
-              <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
 
               <div class="date-strip">
-                <div class="date-strip-main">${event['datum od'] || ''} – ${event.datum_do || ''}</div>
+                <div class="date-strip-main">${formatDateRange(event['datum od'], event.datum_do)}</div>
                 <div class="date-strip-sub">${event['místo'] || '—'} · Registrace do ${event.registrace_konec || 'bude upřesněno'}</div>
               </div>
+
+              <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
 
               ${leadHtml}
               ${discordLinkHtml}
