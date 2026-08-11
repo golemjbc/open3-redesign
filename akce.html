@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OOO Community - Otevři se. Poznej se. Propoj se.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Akce — OOO Community</title>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><img src="assets/images/OOOlogo.png" alt="OOO logo"> OOO Community</a>
+      <nav>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="index.html">Domů</a></li>
+          <li><a href="akce.html" class="active">Akce</a></li>
+          <li><a href="pravidla.html">Pravidla</a></li>
+          <li><a href="contact.html">Kontakt</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <div id="user-info"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+        <a id="login-button" href="#" class="btn btn-primary btn-sm">Přihlásit</a>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" style="padding-bottom: 0;">
+    <div class="container">
+      <span class="eyebrow">Kalendář</span>
+      <h1>Dostupné akce</h1>
+      <div class="filters" id="filters">
+        <button class="filter-btn active" data-filter="all">Všechny akce</button>
+        <button class="filter-btn" data-filter="mine">Jen pro mě</button>
+        <button class="filter-btn" data-filter="soon">Brzy končí registrace</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="container">
+      <div id="events-container" class="event-grid">
+        <div class="loading-state">Načítám akce…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Postup</span>
+        <h2>Jak to funguje</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><h4>Připoj se na Discord</h4><p>Vyplníš přihlášku do komunity, získáš základní roli čekatel.</p></div>
+        <div class="step"><h4>Vyber si akci</h4><p>Na webu si vybereš akci, která tě láká.</p></div>
+        <div class="step"><h4>Přihlas se</h4><p>Po přihlášení přes Discord si vybereš akci a přihlásíš se na ni.</p></div>
+        <div class="step"><h4>QR záloha</h4><p>Vygeneruje se QR platba, po zaplacení a potvrzení dostáváš roli „účastník".</p></div>
+        <div class="step"><h4>Účast na akci</h4><p>Info a domluvy přes Discord a organizátory.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">OOO Community</div>
+        <ul class="footer-links">
+          <li><a href="mailto:info@open3.cz">info@open3.cz</a></li>
+          <li><a href="tel:+420735593621">+420 735 593 621</a></li>
+          <li><a href="https://discord.gg/qYCAubmDQc">Discord</a></li>
+          <li><a href="https://www.instagram.com/ooo.community">Instagram</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">© 2026 OOO Community z.s. — Design: Adam (redesign koncept, mimo produkci)</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+    function getSmartImageUrl(url) {
+      if (!url) return null;
+      const driveMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (driveMatch) return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w800`;
+      if (url.includes('photos.app.goo.gl') || url.includes('photos.google.com')) {
+        return 'https://images.weserv.nl/?url=' + encodeURIComponent(url);
+      }
+      return url;
+    }
+
+    function parseCzechDate(str) {
+      if (!str) return null;
+      const datePart = str.split(' ')[0];
+      const parts = datePart.split('.');
+      if (parts.length < 3) return null;
+      const day = parseInt(parts[0], 10), month = parseInt(parts[1], 10) - 1, year = parseInt(parts[2], 10);
+      if (!day || !Number.isInteger(month) || !year) return null;
+      return new Date(year, month, day);
+    }
+
+    function isSoon(e) {
+      const endDate = parseCzechDate(e.registrace_konec || '');
+      if (!endDate) return false;
+      const today = new Date(); today.setHours(0,0,0,0);
+      endDate.setHours(0,0,0,0);
+      const diffDays = (endDate.getTime() - today.getTime()) / 86400000;
+      return diffDays >= 0 && diffDays <= 14;
+    }
+
+    function userHasRequiredRole(requiredRolesString, userRolesObj) {
+      const trimmed = (requiredRolesString || '').trim();
+      if (!trimmed) return true;
+      const requiredList = trimmed.split(',').map(r => r.trim()).filter(Boolean);
+      if (requiredList.length === 0) return true;
+      return requiredList.some(roleName => userRolesObj.hasOwnProperty(roleName));
+    }
+
+    function loadMyRoles(loggedUser) {
+      if (!loggedUser || !loggedUser.userId) return Promise.resolve({});
+      return fetch(API_BASE + '/api/members')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(members => {
+          const me = members.find(m => m.user_id === loggedUser.userId);
+          return (me && me.roles) || {};
+        })
+        .catch(() => ({}));
+    }
+
+    const container = document.getElementById('events-container');
+    let allCards = [];
+
+    const loggedUser = getLoggedUser();
+
+    loadMyRoles(loggedUser).then(myRoles => {
+      fetch(API_BASE + '/api/events')
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(events => {
+          if (!events || events.length === 0) {
+            container.innerHTML = '<div class="empty-state">Momentálně nejsou vypsané žádné akce.</div>';
+            return;
+          }
+          container.innerHTML = '';
+          allCards = [];
+
+          events.forEach(e => {
+            const requiredRoles = e.discord_role_required || '';
+            const isLoggedIn = !!loggedUser && !!loggedUser.userId;
+            const canSee = isLoggedIn && userHasRequiredRole(requiredRoles, myRoles);
+            const soon = isSoon(e);
+            const img = getSmartImageUrl(e.obrazek);
+
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            card.dataset.mine = canSee ? '1' : '0';
+            card.dataset.soon = soon ? '1' : '0';
+
+            let footer;
+            if (canSee) {
+              footer = `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}" class="btn btn-primary btn-block">Detail &amp; přihlášení</a>`;
+            } else if (!isLoggedIn) {
+              footer = `<span class="access-badge locked">Pro detail se přihlas přes Discord</span>`;
+            } else {
+              footer = `<span class="access-badge role">Jen pro role: ${requiredRoles || '—'}</span>`;
+            }
+
+            card.innerHTML = `
+              <div class="thumb">
+                ${soon ? '<span class="badge-soon">Brzy končí registrace</span>' : ''}
+                ${img ? `<img src="${img}" alt="${e.nazev || ''}" loading="lazy">` : ''}
+              </div>
+              <div class="body">
+                <h3>${canSee ? `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}">${e.nazev || ''}</a>` : (e.nazev || '')}</h3>
+                <div class="price">${e.cena ? e.cena + ' Kč' : 'Cena bude upřesněna'}</div>
+                <div class="meta">${e['datum od'] || ''} – ${e.datum_do || ''} · Registrace do ${e.registrace_konec || '—'}</div>
+                <p class="desc">${(e.popis || '').replace(/<[^>]*>/g, '')}</p>
+                <div class="footer-row">${footer}</div>
+              </div>
+            `;
+            container.appendChild(card);
+            allCards.push(card);
+          });
+
+          document.querySelectorAll('#filters .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              document.querySelectorAll('#filters .filter-btn').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              const f = btn.dataset.filter;
+              allCards.forEach(card => {
+                let show = true;
+                if (f === 'mine') show = card.dataset.mine === '1';
+                if (f === 'soon') show = card.dataset.soon === '1';
+                card.style.display = show ? '' : 'none';
+              });
+            });
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          container.innerHTML = '<div class="empty-state">Chyba při načítání akcí.</div>';
+        });
+    });
+
+    window.onOooLogin = () => location.reload();
+    window.onOooLogout = () => location.reload();
+  </script>
+</body>
+</html>

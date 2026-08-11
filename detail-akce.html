@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OOO Community - Otevři se. Poznej se. Propoj se.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Detail akce — OOO Community</title>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html"><img src="assets/images/OOOlogo.png" alt="OOO logo"> OOO Community</a>
+      <nav>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="index.html">Domů</a></li>
+          <li><a href="akce.html" class="active">Akce</a></li>
+          <li><a href="pravidla.html">Pravidla</a></li>
+          <li><a href="contact.html">Kontakt</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <div id="user-info"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+        <a id="login-button" href="#" class="btn btn-primary btn-sm">Přihlásit</a>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="section detail-hero">
+    <div class="container">
+      <a href="akce.html" class="back-link">← Zpět na seznam akcí</a>
+      <div id="page-body">
+        <div class="loading-state">Načítám detail akce…</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">OOO Community</div>
+        <ul class="footer-links">
+          <li><a href="mailto:info@open3.cz">info@open3.cz</a></li>
+          <li><a href="tel:+420735593621">+420 735 593 621</a></li>
+          <li><a href="https://discord.gg/qYCAubmDQc">Discord</a></li>
+          <li><a href="https://www.instagram.com/ooo.community">Instagram</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">© 2026 OOO Community z.s. — Design: Adam (redesign koncept, mimo produkci)</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event_id');
+    const pageBody = document.getElementById('page-body');
+
+    function getSmartImageUrl(url) {
+      if (!url) return null;
+      const driveMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (driveMatch) return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w800`;
+      if (url.includes('photos.app.goo.gl') || url.includes('photos.google.com')) {
+        return 'https://images.weserv.nl/?url=' + encodeURIComponent(url);
+      }
+      return url;
+    }
+    function parseImageUrls(cellValue) {
+      if (!cellValue) return [];
+      return cellValue.split(';').map(u => u.trim()).filter(Boolean);
+    }
+    function userHasRequiredRole(requiredRolesString, userRolesObj) {
+      const trimmed = (requiredRolesString || '').trim();
+      if (!trimmed) return true;
+      const requiredList = trimmed.split(',').map(r => r.trim()).filter(Boolean);
+      if (requiredList.length === 0) return true;
+      return requiredList.some(roleName => userRolesObj.hasOwnProperty(roleName));
+    }
+
+    if (!eventId) {
+      pageBody.innerHTML = '<div class="empty-state">Akce nenalezena (chybí event_id v URL).</div>';
+    } else {
+      Promise.all([
+        fetch(API_BASE + '/api/events').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+        fetch(API_BASE + '/api/members').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      ]).then(([events, members]) => {
+        const event = events.find(ev => ev.event_id === eventId);
+        if (!event) {
+          pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena.</div>';
+          return;
+        }
+
+        // 🔒 Kontrola oprávnění - stejná logika jako na produkci (přihlášení + discord_role_required)
+        const loggedUser = getLoggedUser();
+        const isLoggedIn = !!loggedUser && !!loggedUser.userId;
+        let myRoles = {};
+        if (isLoggedIn) {
+          const me = members.find(m => m.user_id === loggedUser.userId);
+          myRoles = (me && me.roles) || {};
+        }
+        const requiredRoles = event.discord_role_required || '';
+        const hasAccess = isLoggedIn && userHasRequiredRole(requiredRoles, myRoles);
+
+        if (!hasAccess) {
+          pageBody.innerHTML = `
+            <div class="access-denied">
+              <h2>Přístup odepřen</h2>
+              <p>${isLoggedIn
+                ? 'Na tuto akci nemáš potřebné oprávnění (' + (requiredRoles || '—') + ').'
+                : 'Pro zobrazení a přihlášení na tuto akci se nejdřív musíš přihlásit přes Discord.'}</p>
+              <a href="akce.html" class="btn btn-primary">← Zpět na seznam akcí</a>
+            </div>`;
+          return;
+        }
+
+        renderEventDetail(event, members);
+      }).catch(err => {
+        console.error(err);
+        pageBody.innerHTML = '<div class="empty-state">Chyba při načítání detailu akce.</div>';
+      });
+    }
+
+    function renderEventDetail(event, members) {
+      const isFreeEvent = !event.cena || event.cena.trim() === '' || parseFloat(event.cena) === 0;
+      const images = parseImageUrls(event.obrazky || event.obrazek || '').map(getSmartImageUrl);
+      const prefs = [event.pref_A, event.pref_B, event.pref_C, event.pref_D, event.pref_E].filter(Boolean);
+
+      let discordLinkHtml = '';
+      if (event.discord_info) {
+        const urlMatch = event.discord_info.match(/https?:\/\/[^\s\[\]]+/);
+        if (urlMatch) discordLinkHtml = `<div class="discord-link-box">💬 <a href="${urlMatch[0]}" target="_blank">Discord kanál s informacemi, diskusí a dotazy</a></div>`;
+      }
+
+      const galleryHtml = images.length
+        ? images.map(src => `<img src="${src}" alt="${event.nazev || ''}">`).join('')
+        : `<img src="assets/images/OOOlogo.png" alt="${event.nazev || ''}">`;
+      const dotsHtml = images.length > 1
+        ? images.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')
+        : '';
+
+      const prefsHtml = prefs.length
+        ? prefs.map((p, i) => `<label><input type="checkbox" name="pref" value="${p.replace(/"/g, '&quot;')}"> ${p}</label>`).join('')
+        : '<p class="form-hint">Pro tuto akci nejsou definované žádné preference.</p>';
+
+      pageBody.innerHTML = `
+        <div class="detail-grid">
+          <div>
+            <div class="gallery">
+              <div class="gallery-main" id="gallery-main">${galleryHtml}</div>
+              <div class="gallery-dots" id="gallery-dots">${dotsHtml}</div>
+            </div>
+          </div>
+          <div>
+            <div class="detail-card">
+              <span class="eyebrow">${event.event_id}</span>
+              <h1>${event.nazev || ''}</h1>
+              <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
+              <p>${(event.popis || '').replace(/<br\s*\/?>/gi, ' ')}</p>
+              ${discordLinkHtml}
+              <div class="meta-row">
+                <div class="meta-item"><span class="label">Místo</span>${event['místo'] || '—'}</div>
+                <div class="meta-item"><span class="label">Termín</span>${event['datum od'] || ''} – ${event.datum_do || ''}</div>
+                <div class="meta-item"><span class="label">Registrace do</span>${event.registrace_konec || 'bude upřesněno'}</div>
+              </div>
+
+              <div id="registration-block">
+                <h3>Přihláška na akci</h3>
+                <form id="registration-form">
+                  <div class="form-group">
+                    <label class="form-label">Typ účasti</label>
+                    <div class="pill-choice">
+                      <input type="radio" name="typUcasti" id="typSingle" value="single" checked>
+                      <label for="typSingle">Single</label>
+                      <input type="radio" name="typUcasti" id="typPar" value="par">
+                      <label for="typPar">Pár</label>
+                    </div>
+                  </div>
+                  <div class="form-group hidden" id="partner-group">
+                    <label class="form-label" for="partnerDiscord">Discord jméno partnera (pokud má)</label>
+                    <div class="autocomplete-wrap">
+                      <input type="text" class="form-control" id="partnerDiscord" placeholder="Začni psát Discord jméno…">
+                      <div class="autocomplete-dropdown" id="partner-dropdown"></div>
+                    </div>
+                    <div class="form-hint">Vyber z nabídky nebo napiš ručně (bez Discordu OK).</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Preference</label>
+                    <div class="pref-list">${prefsHtml}</div>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Přihlásit se na akci</button>
+                </form>
+              </div>
+
+              <div id="registration-info" class="status-panel success hidden"></div>
+              <div id="deposit-info" class="status-panel info hidden"></div>
+              <div id="final-payment-info" class="status-panel info hidden"></div>
+              <div id="payment-complete" class="status-panel success hidden"></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Gallery scroll -> dots sync
+      const galleryMain = document.getElementById('gallery-main');
+      const dots = document.querySelectorAll('#gallery-dots span');
+      if (galleryMain && dots.length) {
+        galleryMain.addEventListener('scroll', () => {
+          const idx = Math.round(galleryMain.scrollLeft / galleryMain.clientWidth);
+          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        });
+      }
+
+      const partnerGroup = document.getElementById('partner-group');
+      document.getElementById('typSingle').addEventListener('change', function () { if (this.checked) partnerGroup.classList.add('hidden'); });
+      document.getElementById('typPar').addEventListener('change', function () { if (this.checked) partnerGroup.classList.remove('hidden'); });
+
+      // Partner autocomplete (stejná logika jako produkce, jen nový markup)
+      let discordMembers = members.map(m => {
+        const displayName = m.roles['Zobrazované jméno'] || m.roles['Uživatelské jméno'] || 'Neznámý';
+        const username = m.roles['Uživatelské jméno'] || 'Neznámý';
+        return { userId: m.user_id, displayName, username };
+      });
+      const partnerInput = document.getElementById('partnerDiscord');
+      const dropdown = document.getElementById('partner-dropdown');
+      if (partnerInput) {
+        partnerInput.addEventListener('input', function () {
+          const q = this.value.toLowerCase();
+          if (q.length < 2) { dropdown.style.display = 'none'; return; }
+          const matches = discordMembers.filter(m =>
+            m.userId.toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q)
+          ).slice(0, 8);
+          dropdown.innerHTML = matches.map(m =>
+            `<div class="autocomplete-item" data-user-id="${m.userId}" data-display-name="${m.displayName}" data-username="${m.username}">
+               <strong>${m.displayName}</strong><small>${m.username}</small>
+             </div>`
+          ).join('');
+          dropdown.style.display = matches.length ? 'block' : 'none';
+        });
+        dropdown.addEventListener('click', function (e) {
+          const item = e.target.closest('.autocomplete-item');
+          if (!item) return;
+          partnerInput.value = `${item.dataset.displayName} | ${item.dataset.username} | ${item.dataset.userId}`;
+          dropdown.style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+          if (!e.target.closest('#partnerDiscord')) dropdown.style.display = 'none';
+        });
+      }
+
+      function showPanel(id, html) {
+        const el = document.getElementById(id);
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+      }
+      function hidePanel(id) { document.getElementById(id).classList.add('hidden'); }
+
+      function loadPaymentInfo(userId, userName, typUcasti, paymentType) {
+        if (!userId) return;
+        const qp = new URLSearchParams({
+          event_id: event.event_id, user_id: userId, user_name: userName || '',
+          typ_ucasti: typUcasti || 'single', payment_type: paymentType || 'deposit',
+          jednorazova: event.jednorazova || 'ne'
+        });
+        fetch(API_BASE + '/api/get-deposit-info?' + qp.toString())
+          .then(r => r.json())
+          .then(data => {
+            if (!data || !data.deposit_amount || data.deposit_amount === '0') return;
+            const isFinal = paymentType === 'final';
+            const targetId = isFinal ? 'final-payment-info' : 'deposit-info';
+            const label = isFinal ? 'Doplatek' : 'Záloha';
+            const amount = parseFloat(data.deposit_amount);
+            const isPar = typUcasti === 'par';
+            const amountText = isPar ? `2 × ${(amount / 2).toFixed(0)} Kč = ${amount} Kč` : `${amount} Kč`;
+            showPanel(targetId, `
+              <h4>${label}</h4>
+              <p style="margin:0 0 4px;color:var(--text);font-weight:700;">${amountText}</p>
+              <div class="qr-wrap">
+                <img src="data:image/png;base64,${data.qr_base64}" alt="QR platba">
+                <div class="qr-info">
+                  <div><strong>Účet:</strong> ${data.account_cz || data.iban}</div>
+                  <div><strong>VS:</strong> ${data.vs}</div>
+                  <div><strong>Zpráva:</strong> ${data.message}</div>
+                </div>
+              </div>
+            `);
+          })
+          .catch(err => console.error('Payment info error:', err));
+      }
+
+      function parsePrihlaskaRow(row) {
+        if (!row) return {};
+        return {
+          deposit_status: row.deposit_status || '',
+          doplatek: row.doplatek || '0',
+          doplatek_status: row.doplatek_status || '',
+          typ_ucasti: row.partner || 'single' // API vrací typ účasti pod polem "partner"
+        };
+      }
+
+      (function checkAlreadyRegistered() {
+        const storedUserJson = localStorage.getItem('oooUser');
+        if (!storedUserJson) return;
+        let userId, userName;
+        try {
+          const u = JSON.parse(storedUserJson);
+          userId = u.userId; userName = u.userName;
+        } catch (e) { return; }
+        if (!userId) return;
+
+        fetch(API_BASE + '/api/my-registrations?user_id=' + encodeURIComponent(userId))
+          .then(r => r.json())
+          .then(list => {
+            if (!Array.isArray(list)) return;
+            const found = list.find(item => item.event_id === event.event_id);
+            if (!found) return;
+
+            const p = parsePrihlaskaRow(found);
+            const depositOK = p.deposit_status?.toUpperCase() === 'OK';
+            const doplatekOK = p.doplatek_status?.toUpperCase() === 'OK';
+
+            document.getElementById('registration-block').classList.add('hidden');
+
+            if (isFreeEvent) {
+              showPanel('registration-info', '<strong>🎉 Jsi přihlášený na akci zdarma!</strong>');
+              return;
+            }
+            if (doplatekOK || (isFreeEvent === false && event.jednorazova === 'ano' && depositOK) || (depositOK && doplatekOK)) {
+              showPanel('payment-complete', '<h4>Akce zaplacena ✅</h4><p style="margin:0;">Máš všechny platby v pořádku. Uvidíme se na akci!</p>');
+              return;
+            }
+            if (event.jednorazova !== 'ano' && depositOK && !doplatekOK) {
+              showPanel('registration-info', '<strong>✅ Záloha zaplacena!</strong> Doplatek: ' + (p.doplatek || 'bude upřesněno'));
+              loadPaymentInfo(userId, userName, p.typ_ucasti, 'final');
+              return;
+            }
+            const paymentType = (event.jednorazova === 'ano') ? 'final' : 'deposit';
+            showPanel('registration-info', '<strong>Jsi přihlášen!</strong> Tvá přihláška byla úspěšně zaregistrována.');
+            loadPaymentInfo(userId, userName, p.typ_ucasti, paymentType);
+          })
+          .catch(err => console.error('my-registrations error:', err));
+      })();
+
+      document.getElementById('registration-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const typUcasti = document.querySelector('input[name="typUcasti"]:checked').value;
+        const partner = partnerInput.value.trim();
+        const selectedPrefs = Array.from(document.querySelectorAll('input[name="pref"]:checked')).map(cb => cb.value);
+        const user = getLoggedUser();
+
+        let depositAmount = event.zaloha || '0';
+        let doplatekAmount = '';
+        if (event.jednorazova === 'ano' && event.cena) {
+          const cenaNum = parseFloat(event.cena.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+          doplatekAmount = (cenaNum * (typUcasti === 'par' ? 2 : 1)).toFixed(0);
+          depositAmount = '0';
+        }
+
+        const qp = new URLSearchParams({
+          event_id: event.event_id, typ_ucasti: typUcasti,
+          user_discord: user?.userName || 'NEPRIHLASENY_USER',
+          partner_discord: partner || '', user_id: user?.userId || '',
+          preference: JSON.stringify(selectedPrefs),
+          deposit_amount: depositAmount, doplatek_amount: doplatekAmount,
+          jednorazova: event.jednorazova || 'ne'
+        });
+
+        fetch(API_BASE + '/api/register-event?' + qp.toString())
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('registration-block').classList.add('hidden');
+            showPanel('registration-info', isFreeEvent
+              ? '<strong>🎉 Jsi přihlášený na akci zdarma!</strong>'
+              : '<strong>Jsi přihlášen!</strong> Tvá přihláška byla úspěšně zaregistrována.');
+
+            if (user?.userId && event.discord_role_zajemce) {
+              fetch(API_BASE + '/api/members-register?' +
+                `user_id=${encodeURIComponent(user.userId)}&role_header=${encodeURIComponent(event.discord_role_zajemce)}`)
+                .catch(err => console.error('members-register error:', err));
+            }
+
+            if (user?.userId && !isFreeEvent) {
+              if (event.jednorazova === 'ano') {
+                loadPaymentInfo(user.userId, user.userName, typUcasti, 'final');
+              } else {
+                loadPaymentInfo(user.userId, user.userName, typUcasti, 'deposit');
+              }
+            }
+          })
+          .catch(err => {
+            console.error('Registrace error:', err);
+            alert('Chyba při registraci: ' + err.message);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
