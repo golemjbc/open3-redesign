@@ -24,7 +24,15 @@ function initAuthUI() {
     userName.textContent = user.userName;
     userAvatar.src = user.avatarUrl;
     userInfo.style.display = 'flex';
-    loginBtn.textContent = 'Odhlásit';
+    loginBtn.textContent = '';
+    const uname = document.createElement('span');
+    uname.className = 'btn-uname';
+    uname.textContent = user.userName;
+    const label = document.createElement('span');
+    label.className = 'btn-logout-text';
+    label.textContent = 'Odhlásit';
+    loginBtn.appendChild(uname);
+    loginBtn.appendChild(label);
     loginBtn.dataset.mode = 'logout';
   }
 

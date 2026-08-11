@@ -197,6 +197,8 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 }
 #user-info img { width: 28px; height: 28px; border-radius: 50%; }
 
+.btn-uname { display: none; }
+
 .nav-toggle {
   display: none;
   background: none;
@@ -216,28 +218,29 @@ p { margin: 0 0 16px; color: var(--text-muted); }
   }
   .nav-toggle { grid-column: 1; grid-row: 1; justify-self: start; }
   .brand { grid-column: 2; grid-row: 1; justify-self: center; }
-  .header-actions {
-    grid-column: 3; grid-row: 1; justify-self: end;
+  .header-actions { grid-column: 3; grid-row: 1; justify-self: end; }
+  #user-info { display: none !important; }
+  #login-button[data-mode="logout"] {
+    display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+    max-width: 96px;
+    padding: 5px 12px;
+    text-align: center;
   }
-  #user-info {
-    padding: 0;
-    background: none;
-    gap: 0;
-  }
-  #user-info img { display: none; }
-  #user-name {
+  .btn-uname {
     display: block;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    max-width: 34vw;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 0.6rem;
+    font-weight: 600;
+    opacity: 0.8;
   }
+  .btn-logout-text { display: block; font-size: 0.78rem; }
   nav { grid-column: 1 / -1; grid-row: 2; }
   .nav-links {
     position: absolute;
