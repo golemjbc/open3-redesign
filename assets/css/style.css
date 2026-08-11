@@ -366,22 +366,38 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .back-link { font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
 
 .event-description {
-  max-width: 760px;
-  margin: 56px auto 0;
+  width: 100%;
+  margin: 56px 0 0;
   padding-top: 40px;
   border-top: 1px solid var(--border);
 }
-.event-description h2 { margin-bottom: 16px; }
-.event-description .prose { color: var(--text-muted); font-size: 1rem; line-height: 1.75; }
+.event-description h2 { margin-bottom: 20px; }
+.event-description .prose {
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.75;
+  column-width: 420px;
+  column-gap: 56px;
+}
 .event-description .prose br { content: ""; display: block; margin-top: 10px; }
+@media (max-width: 760px) { .event-description .prose { column-width: auto; column-count: 1; } }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 48px;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 40px;
   align-items: start;
 }
 @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+
+/* Galerie zůstává "přilepená" při scrollu, ať mezi ní a delším buy boxem nevzniká prázdná mezera */
+.detail-grid > div:first-child {
+  position: sticky;
+  top: calc(var(--header-h) + 24px);
+}
+@media (max-width: 900px) {
+  .detail-grid > div:first-child { position: static; }
+}
 
 .gallery {
   border-radius: var(--radius-lg);
