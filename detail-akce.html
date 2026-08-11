@@ -203,7 +203,8 @@
 
               <div class="date-strip">
                 <div class="date-strip-main">${formatDateRange(event['datum od'], event.datum_do)}</div>
-                <div class="date-strip-sub">${event['místo'] || '—'} · Registrace do ${event.registrace_konec || 'bude upřesněno'}</div>
+                <div class="date-strip-sub">${event['místo'] || '—'}</div>
+                <div class="date-strip-sub">Registrace do ${event.registrace_konec || 'bude upřesněno'}</div>
               </div>
 
               <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
