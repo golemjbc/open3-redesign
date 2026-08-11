@@ -454,17 +454,27 @@ p { margin: 0 0 16px; color: var(--text-muted); }
   padding: 32px;
 }
 .detail-card .price-tag { font-family: "Bebas Neue", "Arial Narrow", sans-serif; font-size: 2rem; font-weight: 400; letter-spacing: 0.02em; color: var(--primary); margin-bottom: 4px; }
-.meta-row { display: flex; gap: 20px; flex-wrap: wrap; margin: 16px 0; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.meta-item { font-size: 0.86rem; }
-.meta-item .label { display: block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
 
-.discord-link-box {
-  background: var(--bg-alt);
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  margin: 16px 0;
-  font-size: 0.9rem;
+/* Datum je klíčová informace u akce - dostává vlastní, výraznější blok */
+.date-strip {
+  margin: 18px 0 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
+.date-strip-main {
+  font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.date-strip-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+.lead-teaser { font-size: 0.95rem; color: var(--text-muted); margin: 4px 0 16px; line-height: 1.6; }
+.read-more-link { font-weight: 600; color: var(--primary); white-space: nowrap; }
+
+.discord-link-inline { font-size: 0.86rem; color: var(--text-muted); margin: 0 0 24px; }
+.discord-link-inline a { color: var(--primary); font-weight: 600; }
 
 /* ---------- Form ---------- */
 .form-group { margin-bottom: 20px; }

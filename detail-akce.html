@@ -133,8 +133,14 @@
       let discordLinkHtml = '';
       if (event.discord_info) {
         const urlMatch = event.discord_info.match(/https?:\/\/[^\s\[\]]+/);
-        if (urlMatch) discordLinkHtml = `<div class="discord-link-box">💬 <a href="${urlMatch[0]}" target="_blank">Discord kanál s informacemi, diskusí a dotazy</a></div>`;
+        if (urlMatch) discordLinkHtml = `<p class="discord-link-inline">💬 <a href="${urlMatch[0]}" target="_blank">Diskuze a dotazy na Discordu</a></p>`;
       }
+
+      const leadTextRaw = (event.popis || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').trim();
+      const leadText = leadTextRaw.length > 170 ? leadTextRaw.slice(0, 170).trim() + '…' : leadTextRaw;
+      const leadHtml = leadText
+        ? `<p class="lead-teaser">${leadText} <a href="#popis" class="read-more-link">Číst dál ↓</a></p>`
+        : '';
 
       const galleryHtml = images.length
         ? images.map(src => `<img src="${src}" alt="${event.nazev || ''}">`).join('')
@@ -167,11 +173,13 @@
               <span class="eyebrow">${event.event_id}</span>
               <h1>${event.nazev || ''}</h1>
               <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
-              <div class="meta-row">
-                <div class="meta-item"><span class="label">Místo</span>${event['místo'] || '—'}</div>
-                <div class="meta-item"><span class="label">Termín</span>${event['datum od'] || ''} – ${event.datum_do || ''}</div>
-                <div class="meta-item"><span class="label">Registrace do</span>${event.registrace_konec || 'bude upřesněno'}</div>
+
+              <div class="date-strip">
+                <div class="date-strip-main">${event['datum od'] || ''} – ${event.datum_do || ''}</div>
+                <div class="date-strip-sub">${event['místo'] || '—'} · Registrace do ${event.registrace_konec || 'bude upřesněno'}</div>
               </div>
+
+              ${leadHtml}
               ${discordLinkHtml}
 
               <div id="registration-block">
@@ -211,7 +219,7 @@
         </div>
 
         ${event.popis ? `
-        <div class="event-description">
+        <div class="event-description" id="popis">
           <h2>O akci</h2>
           <div class="prose">${event.popis}</div>
         </div>` : ''}
