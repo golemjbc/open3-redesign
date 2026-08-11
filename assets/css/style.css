@@ -21,7 +21,8 @@
   --primary: var(--purple);
   --primary-dark: #7e2a52;
   --accent: var(--sky);
-  --gradient: linear-gradient(135deg, var(--navy) 0%, var(--purple) 55%, var(--sky) 100%);
+  /* Decentní přechod fialová -> modrá (dvě dominantní brand barvy), bez duhy */
+  --gradient: linear-gradient(120deg, var(--purple) 0%, var(--navy) 100%);
 
   --success: #067a4d;
   --success-bg: #dffcee;
@@ -55,7 +56,7 @@ body {
 img { max-width: 100%; display: block; }
 
 a { color: var(--primary); text-decoration: none; }
-a:hover { color: var(--accent); }
+a:hover { color: var(--primary-dark); }
 
 .container {
   max-width: var(--container);
@@ -64,9 +65,9 @@ a:hover { color: var(--accent); }
 }
 
 h1, h2, h3, h4, h5 {
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.015em;
   margin: 0 0 12px;
 }
 h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
@@ -108,9 +109,9 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .btn-primary {
   background: var(--gradient);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(175, 59, 110, 0.3);
+  box-shadow: 0 4px 14px rgba(10, 16, 69, 0.18);
 }
-.btn-primary:hover { box-shadow: 0 12px 28px rgba(175, 59, 110, 0.38); color: #fff; }
+.btn-primary:hover { box-shadow: 0 8px 20px rgba(10, 16, 69, 0.24); color: #fff; }
 .btn-outline {
   background: var(--surface);
   color: var(--text);
@@ -225,35 +226,24 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 }
 
 /* ---------- Hero ---------- */
+/* Decentní, luxusní nádech - jeden jemný přechod fialová/modrá, žádná duha */
 .hero {
-  padding: 96px 0 72px;
+  padding: 110px 0 88px;
   text-align: center;
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 12% 15%, rgba(10, 16, 69, 0.10), transparent 40%),
-    radial-gradient(circle at 88% 12%, rgba(175, 59, 110, 0.16), transparent 42%),
-    radial-gradient(circle at 75% 85%, rgba(5, 178, 220, 0.14), transparent 40%),
-    radial-gradient(circle at 8% 90%, rgba(33, 250, 144, 0.12), transparent 38%);
-}
-.hero::before,
-.hero::after {
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  z-index: 0;
-  filter: blur(2px);
-  opacity: 0.5;
+    radial-gradient(ellipse 60% 50% at 50% -10%, rgba(175, 59, 110, 0.06), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(10, 16, 69, 0.05), transparent 60%);
 }
 .hero::before {
-  width: 140px; height: 140px;
-  top: 18%; right: 10%;
-  border: 2px solid rgba(175, 59, 110, 0.35);
-}
-.hero::after {
-  width: 90px; height: 90px;
-  bottom: 12%; left: 8%;
-  border: 2px solid rgba(5, 178, 220, 0.35);
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: 620px; height: 620px;
+  right: -220px; top: -260px;
+  border-radius: 50%;
+  border: 1px solid rgba(10, 16, 69, 0.07);
 }
 .hero .container { position: relative; z-index: 1; }
 .hero h1 { max-width: 760px; margin: 0 auto 20px; }
