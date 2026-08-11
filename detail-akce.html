@@ -142,6 +142,10 @@
       const dotsHtml = images.length > 1
         ? images.map((_, i) => `<span class="${i === 0 ? 'active' : ''}"></span>`).join('')
         : '';
+      const arrowsHtml = images.length > 1
+        ? `<button type="button" class="gallery-arrow gallery-arrow-prev" id="gallery-prev" aria-label="Předchozí obrázek">‹</button>
+           <button type="button" class="gallery-arrow gallery-arrow-next" id="gallery-next" aria-label="Další obrázek">›</button>`
+        : '';
 
       const prefsHtml = prefs.length
         ? prefs.map((p, i) => `<label><input type="checkbox" name="pref" value="${p.replace(/"/g, '&quot;')}"> ${p}</label>`).join('')
@@ -151,7 +155,10 @@
         <div class="detail-grid">
           <div>
             <div class="gallery">
-              <div class="gallery-main" id="gallery-main">${galleryHtml}</div>
+              <div class="gallery-viewport">
+                <div class="gallery-main" id="gallery-main">${galleryHtml}</div>
+                ${arrowsHtml}
+              </div>
               <div class="gallery-dots" id="gallery-dots">${dotsHtml}</div>
             </div>
           </div>
@@ -160,13 +167,12 @@
               <span class="eyebrow">${event.event_id}</span>
               <h1>${event.nazev || ''}</h1>
               <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
-              <p>${(event.popis || '').replace(/<br\s*\/?>/gi, ' ')}</p>
-              ${discordLinkHtml}
               <div class="meta-row">
                 <div class="meta-item"><span class="label">Místo</span>${event['místo'] || '—'}</div>
                 <div class="meta-item"><span class="label">Termín</span>${event['datum od'] || ''} – ${event.datum_do || ''}</div>
                 <div class="meta-item"><span class="label">Registrace do</span>${event.registrace_konec || 'bude upřesněno'}</div>
               </div>
+              ${discordLinkHtml}
 
               <div id="registration-block">
                 <h3>Přihláška na akci</h3>
@@ -203,17 +209,37 @@
             </div>
           </div>
         </div>
+
+        ${event.popis ? `
+        <div class="event-description">
+          <h2>O akci</h2>
+          <div class="prose">${event.popis}</div>
+        </div>` : ''}
       `;
 
-      // Gallery scroll -> dots sync
+      // Galerie: scroll -> tečky, klikatelné tečky, šipky
       const galleryMain = document.getElementById('gallery-main');
       const dots = document.querySelectorAll('#gallery-dots span');
+      const galleryPrev = document.getElementById('gallery-prev');
+      const galleryNext = document.getElementById('gallery-next');
+
+      let galleryIndex = 0;
+      function goToSlide(i) {
+        galleryIndex = Math.max(0, Math.min(images.length - 1, i));
+        // Přímé nastavení + CSS scroll-behavior:smooth (spolehlivější než scrollTo({behavior:'smooth'}))
+        galleryMain.scrollLeft = galleryIndex * galleryMain.clientWidth;
+        dots.forEach((d, idx) => d.classList.toggle('active', idx === galleryIndex));
+      }
+
       if (galleryMain && dots.length) {
         galleryMain.addEventListener('scroll', () => {
-          const idx = Math.round(galleryMain.scrollLeft / galleryMain.clientWidth);
-          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+          galleryIndex = Math.round(galleryMain.scrollLeft / galleryMain.clientWidth);
+          dots.forEach((d, i) => d.classList.toggle('active', i === galleryIndex));
         });
+        dots.forEach((dot, i) => dot.addEventListener('click', () => goToSlide(i)));
       }
+      if (galleryPrev) galleryPrev.addEventListener('click', () => goToSlide(galleryIndex - 1));
+      if (galleryNext) galleryNext.addEventListener('click', () => goToSlide(galleryIndex + 1));
 
       const partnerGroup = document.getElementById('partner-group');
       document.getElementById('typSingle').addEventListener('change', function () { if (this.checked) partnerGroup.classList.add('hidden'); });
