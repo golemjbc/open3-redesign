@@ -208,6 +208,15 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 
 @media (max-width: 860px) {
   .nav-toggle { display: block; }
+  .site-header .container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .nav-toggle { grid-column: 1; grid-row: 1; justify-self: start; }
+  .brand { grid-column: 2; grid-row: 1; justify-self: center; }
+  .header-actions { grid-column: 3; grid-row: 1; justify-self: end; }
+  nav { grid-column: 1 / -1; grid-row: 2; }
   .nav-links {
     position: absolute;
     top: var(--header-h);
