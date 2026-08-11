@@ -94,6 +94,28 @@
       return url;
     }
 
+    function formatDateRange(fromStr, toStr) {
+      fromStr = (fromStr || '').trim();
+      toStr = (toStr || '').trim();
+      if (!fromStr && !toStr) return '';
+      if (!fromStr) return toStr;
+      if (!toStr) return fromStr;
+      const parse = (s) => {
+        const parts = s.split('.').map(p => p.trim()).filter(Boolean);
+        return parts.length >= 3 ? { day: parts[0], month: parts[1], year: parts[2] } : null;
+      };
+      const from = parse(fromStr);
+      const to = parse(toStr);
+      if (!from || !to) return `${fromStr} – ${toStr}`;
+      if (from.year === to.year && from.month === to.month) {
+        return `${from.day}.–${to.day}.${to.month}.${to.year}`;
+      }
+      if (from.year === to.year) {
+        return `${from.day}.${from.month}. – ${to.day}.${to.month}.${to.year}`;
+      }
+      return `${fromStr} – ${toStr}`;
+    }
+
     function parseCzechDate(str) {
       if (!str) return null;
       const datePart = str.split(' ')[0];
@@ -176,8 +198,8 @@
               </div>
               <div class="body">
                 <h3>${canSee ? `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}">${e.nazev || ''}</a>` : (e.nazev || '')}</h3>
-                <div class="price">${e.cena ? e.cena + ' Kč' : 'Cena bude upřesněna'}</div>
-                <div class="meta">${e['datum od'] || ''} – ${e.datum_do || ''} · Registrace do ${e.registrace_konec || '—'}</div>
+                <div class="price">${formatDateRange(e['datum od'], e.datum_do) || 'Termín bude upřesněn'}</div>
+                <div class="meta">${e['místo'] || ''}${e['místo'] ? ' · ' : ''}Registrace do ${e.registrace_konec || '—'}</div>
                 <p class="desc">${(e.popis || '').replace(/<[^>]*>/g, '')}</p>
                 <div class="footer-row">${footer}</div>
               </div>
