@@ -222,7 +222,7 @@
 
             let footer;
             if (alreadyRegistered) {
-              footer = `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}" class="btn btn-outline btn-block">✓ Už jsi přihlášen/a</a>`;
+              footer = `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}" class="btn btn-outline btn-block">✓ Přihlášeno — zobrazit detail</a>`;
             } else if (canSee) {
               footer = `<a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}" class="btn btn-primary btn-block">Detail &amp; přihlášení</a>`;
             } else if (!isLoggedIn) {
