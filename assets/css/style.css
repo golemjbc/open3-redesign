@@ -664,4 +664,49 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 /* ---------- Utility ---------- */
 .hidden { display: none !important; }
 .text-center { text-align: center; }
+
+/* ---------- Znovupoužitelné okno detailu člena (Část B, 2026-08-24) ---------- */
+.member-modal-overlay {
+  position: fixed; inset: 0; background: rgba(10, 16, 69, 0.6); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.member-modal {
+  background: var(--surface); border-radius: var(--radius); padding: 28px;
+  max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg); position: relative;
+}
+.member-modal-close {
+  position: absolute; top: 12px; right: 16px; background: none; border: none;
+  font-size: 1.6rem; line-height: 1; color: var(--text-muted); cursor: pointer;
+}
+.member-modal-close:hover { color: var(--text); }
+.member-modal-loading, .member-modal-error, .member-modal-empty { color: var(--text-muted); font-size: 0.9rem; }
+.member-modal-error { color: #b42318; }
+.member-modal-header { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+.member-modal-header h3 { margin: 0 0 4px; }
+.member-modal-photo {
+  width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  background: var(--bg-alt);
+}
+.member-modal-photo-empty { border: 1px dashed var(--border); }
+.member-modal-contact { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+.member-modal h4 { margin: 20px 0 8px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+.member-access-list { display: flex; flex-direction: column; gap: 6px; }
+.member-access-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.88rem; }
+.member-access-ok { background: var(--success-bg); color: var(--success); }
+.member-access-waiting { background: var(--warning-bg); color: var(--warning); }
+.member-access-missing { background: var(--bg-alt); color: var(--text-muted); }
+.member-access-icon { font-weight: 700; }
+.member-history-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.member-history-list li { font-size: 0.88rem; background: var(--bg-alt); padding: 8px 12px; border-radius: var(--radius-sm); }
+.member-history-status { color: var(--text-muted); }
+.member-q-fields { display: flex; flex-direction: column; gap: 6px; }
+.member-q-field { font-size: 0.88rem; }
+.member-patron-actions { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.member-patron-actions select { padding: 8px 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); margin-left: 8px; }
+.member-patron-buttons { display: flex; gap: 10px; }
+.member-modal-msg { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+
+.member-link { color: var(--primary); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; font: inherit; }
+.member-link:hover { color: var(--primary-dark); }
 .mt-lg { margin-top: 32px; }

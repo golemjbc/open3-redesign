@@ -45,6 +45,11 @@
     }
     /* Sticky hlavička jinak při scrollIntoView zakryje horní část formuláře. */
     #event-form-card { scroll-margin-top: calc(var(--header-h) + 16px); }
+    /* Záložky mezi dvěma admin stránkami (Část A / Část B, 2026-08-24). */
+    .admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .admin-tabs a { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .admin-tabs a:hover { color: var(--text); }
+    .admin-tabs a.active { color: var(--primary); border-bottom-color: var(--primary); }
   </style>
 </head>
 <body>
@@ -82,6 +87,11 @@
       </div>
 
       <div id="admin-content" class="hidden">
+        <div class="admin-tabs">
+          <a href="admin-akce.html" class="active">Akce a přihlášky</a>
+          <a href="admin-clenove.html">Členové a dotazníky</a>
+        </div>
+
         <div class="admin-event-card">
           <h3>Založit novou akci</h3>
           <p class="admin-event-meta">Typ a rok se dají nastavit jen teď — číslo akce se dopočítá automaticky a dál se nedá měnit.</p>
@@ -193,6 +203,7 @@
   </footer>
 
   <script src="assets/js/auth.js"></script>
+  <script src="assets/js/member-modal.js"></script>
   <script>
     function identityPayload() {
       const user = getLoggedUser();
@@ -507,7 +518,7 @@
                   <tbody>
                     ${data.registrations.map(r => `
                       <tr>
-                        <td>${r.jmeno || '—'}</td>
+                        <td>${r.ooo_id ? `<button type="button" class="member-link" data-ooo-open="${r.ooo_id}">${r.jmeno || r.ooo_id}</button>` : (r.jmeno || '—')}</td>
                         <td>${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
                         <td>${r.typ_ucasti || ''}</td>
                         <td>${statusLabel(r.deposit_status)} (${r.deposit || 0} Kč)
@@ -526,6 +537,7 @@
                 </table>
               </div>
             `;
+            body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
             body.querySelectorAll('[data-mark]').forEach(btn => btn.addEventListener('click', () => {
               const field = btn.dataset.mark;
               const value = btn.dataset.value || 'OK';

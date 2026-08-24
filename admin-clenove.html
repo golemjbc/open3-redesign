@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta name="referrer" content="no-referrer">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OOO Community - Otevři se. Poznej se. Propoj se.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Administrace členů — OOO Community</title>
+  <style>
+    .admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .admin-tabs a { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .admin-tabs a:hover { color: var(--text); }
+    .admin-tabs a.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .admin-event-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+    .admin-event-card h3 { margin: 0 0 12px; }
+    .member-search-input { width: 100%; max-width: 420px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-size: 0.95rem; margin-bottom: 16px; }
+    .admin-members-table-wrap, .admin-q-table-wrap { overflow-x: auto; }
+    .admin-members-table, .admin-q-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 0.88rem; }
+    .admin-members-table th, .admin-members-table td, .admin-q-table th, .admin-q-table td {
+      text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    .admin-members-table th, .admin-q-table th { font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); }
+    .member-roles-cell { font-size: 0.8rem; color: var(--text-muted); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      <a class="brand" href="index.html"><img src="assets/images/OOOlogo.png" alt="OOO logo"> <span>OOO Community</span></a>
+      <nav>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="index.html">Domů</a></li>
+          <li><a href="akce.html">Akce</a></li>
+          <li><a href="pravidla.html">Pravidla</a></li>
+          <li><a href="contact.html">Kontakt</a></li>
+          <li id="nav-admin" class="hidden"><a href="admin-akce.html">Administrace</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <div id="user-info"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+        <a id="login-button" href="#" class="btn btn-primary btn-sm">Přihlásit</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <span class="eyebrow">Administrace</span>
+      <h1>Členové a dotazníky</h1>
+
+      <div id="gate-loading" class="status-panel info">Ověřuji oprávnění…</div>
+
+      <div id="gate-denied" class="access-denied hidden">
+        <h3>Nemáš oprávnění</h3>
+        <p>Tahle stránka je jen pro radu nebo patrony. Přihlas se prosím přes tlačítko v hlavičce účtem, co má jednu z těch rolí.</p>
+      </div>
+
+      <div id="admin-content" class="hidden">
+        <div class="admin-tabs">
+          <a href="admin-akce.html">Akce a přihlášky</a>
+          <a href="admin-clenove.html" class="active">Členové a dotazníky</a>
+        </div>
+
+        <div class="admin-event-card">
+          <h3>Fronta dotazníků</h3>
+          <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:0.9rem; cursor:pointer;">
+            <input type="checkbox" id="include-resolved-toggle">
+            Zobrazit i vyřízené
+          </label>
+          <div id="questionnaires-body"><p class="form-hint">Načítám…</p></div>
+        </div>
+
+        <div class="admin-event-card">
+          <h3>Přehled členů</h3>
+          <input type="text" id="member-search" class="member-search-input" placeholder="Hledat jméno, Discord, e-mail, telefon…">
+          <div id="members-body"><p class="form-hint">Načítám…</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">© 2026 OOO Community z.s. — Design: Adam (redesign koncept, mimo produkci)</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/member-modal.js"></script>
+  <script>
+    function identityPayload() {
+      const user = getLoggedUser();
+      if (!user) return null;
+      const isGoogleUser = !!(user.provider === 'google' || /^google_/.test(user.userId || ''));
+      return isGoogleUser ? { credential: user.credential } : { discord_user_id: user.userId };
+    }
+
+    const gateLoading = document.getElementById('gate-loading');
+    const gateDenied = document.getElementById('gate-denied');
+    const adminContent = document.getElementById('admin-content');
+    const navAdmin = document.getElementById('nav-admin');
+
+    let allMembers = [];
+
+    // Fulltextové hledání (2026-08-24, na žádost) - napříč jménem/Discord jménem/e-mailem/
+    // telefonem/ooo_id, bez ohledu na diakritiku (ať "kaca" najde "Káča").
+    function stripDiacritics(str) {
+      return (str || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    }
+
+    function renderMembers(list) {
+      const body = document.getElementById('members-body');
+      if (!list.length) { body.innerHTML = '<p class="form-hint">Nic nenalezeno.</p>'; return; }
+      body.innerHTML = `
+        <div class="admin-members-table-wrap">
+          <table class="admin-members-table">
+            <thead><tr><th>Jméno</th><th>Discord</th><th>Kontakt</th><th>Role</th></tr></thead>
+            <tbody>
+              ${list.map(m => `
+                <tr>
+                  <td><button type="button" class="member-link" data-ooo-open="${m.ooo_id}">${m.jmeno || m.ooo_id}</button></td>
+                  <td>${m.discord_username ? '@' + m.discord_username : ''}</td>
+                  <td>${m.email || ''}${m.telefon ? ' · ' + m.telefon : ''}</td>
+                  <td class="member-roles-cell">${Object.keys(m.roles || {}).join(', ')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
+    }
+
+    function loadMembers() {
+      return fetch(API_BASE + '/api/panel-list-members', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...identityPayload() }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) throw new Error(data.error || 'Chyba při načítání členů.');
+          allMembers = data.members;
+          renderMembers(allMembers);
+        });
+    }
+
+    document.getElementById('member-search').addEventListener('input', (e) => {
+      const q = stripDiacritics(e.target.value.trim());
+      if (!q) { renderMembers(allMembers); return; }
+      const filtered = allMembers.filter(m => {
+        const haystack = stripDiacritics([m.jmeno, m.discord_username, m.email, m.telefon, m.ooo_id].filter(Boolean).join(' '));
+        return haystack.includes(q);
+      });
+      renderMembers(filtered);
+    });
+
+    function statusIcon(status) { return status === 'ok' ? '✓' : (status === 'waiting' ? '⏳' : '✗'); }
+
+    function renderQuestionnaires(list) {
+      const body = document.getElementById('questionnaires-body');
+      if (!list.length) { body.innerHTML = '<p class="form-hint">Žádné nevyřízené dotazníky.</p>'; return; }
+      body.innerHTML = `
+        <div class="admin-q-table-wrap">
+          <table class="admin-q-table">
+            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Stav</th><th></th></tr></thead>
+            <tbody>
+              ${list.map(q => `
+                <tr>
+                  <td>${q.jmeno_prezdivka || q.ooo_id}</td>
+                  <td>${q.timestamp || ''}</td>
+                  <td>${q.patron_kdo_historicky || '—'}</td>
+                  <td>${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
+                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo-open="${q.ooo_id}">Zobrazit detail</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
+    }
+
+    function loadQuestionnaires() {
+      const includeResolved = document.getElementById('include-resolved-toggle').checked;
+      return fetch(API_BASE + '/api/panel-list-questionnaires', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...identityPayload(), include_resolved: includeResolved }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) throw new Error(data.error || 'Chyba při načítání dotazníků.');
+          renderQuestionnaires(data.questionnaires);
+        });
+    }
+
+    document.getElementById('include-resolved-toggle').addEventListener('change', () => {
+      loadQuestionnaires().catch(err => alert('Chyba: ' + err.message));
+    });
+
+    // Přístupová brána - Rada NEBO Patron (na rozdíl od admin-akce.html, co je jen pro
+    // Radu). Frontend gating je jen UX - backend (requireAdminIdentity) ověřuje roli
+    // znovu, nezávisle, u každého volání.
+    const loggedUser = getLoggedUser();
+    if (!loggedUser || !loggedUser.userId) {
+      gateLoading.classList.add('hidden');
+      gateDenied.classList.remove('hidden');
+    } else {
+      fetch(API_BASE + '/api/members')
+        .then(r => r.json())
+        .then(members => {
+          const me = members.find(m => m.user_id === loggedUser.userId);
+          const roles = (me && me.roles) || {};
+          const isRada = (roles['Rada'] || '').toString().trim().toUpperCase() === 'X';
+          const isPatron = (roles['Patron'] || '').toString().trim().toUpperCase() === 'X';
+          gateLoading.classList.add('hidden');
+          if (!isRada && !isPatron) {
+            gateDenied.classList.remove('hidden');
+          } else {
+            if (isRada) navAdmin.classList.remove('hidden');
+            adminContent.classList.remove('hidden');
+            Promise.all([loadMembers(), loadQuestionnaires()])
+              .catch(err => alert('Chyba při načítání: ' + err.message));
+          }
+        })
+        .catch(() => {
+          gateLoading.classList.add('hidden');
+          gateDenied.classList.remove('hidden');
+        });
+    }
+  </script>
+</body>
+</html>
