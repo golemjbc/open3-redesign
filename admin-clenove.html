@@ -74,6 +74,24 @@
             <input type="checkbox" id="include-resolved-toggle">
             Zobrazit i vyřízené
           </label>
+          <div class="q-filters" style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+            <label style="font-size:0.88rem;">Patron:
+              <select id="q-filter-patron" style="margin-left:6px; padding:6px 8px; border-radius:8px; border:1.5px solid var(--border);">
+                <option value="">Všichni</option>
+                <option value="__bez__">Bez přiřazeného patrona</option>
+                <option value="Káča & Adam">Káča &amp; Adam</option>
+                <option value="Viktorie & Oliver">Viktorie &amp; Oliver</option>
+                <option value="Karin & Zbyšek">Karin &amp; Zbyšek</option>
+                <option value="Káča">Káča</option>
+              </select>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:0.88rem; cursor:pointer;">
+              <input type="checkbox" id="q-filter-no-contact"> Bez kontaktu
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:0.88rem; cursor:pointer;">
+              <input type="checkbox" id="q-filter-no-meeting"> Bez osobního setkání
+            </label>
+          </div>
           <div id="questionnaires-body"><p class="form-hint">Načítám…</p></div>
         </div>
 
@@ -125,7 +143,7 @@
             <tbody>
               ${list.map(m => `
                 <tr>
-                  <td><button type="button" class="member-link" data-ooo-open="${m.ooo_id}">${m.jmeno || m.ooo_id}</button></td>
+                  <td><button type="button" class="member-link" data-ooo="${m.ooo_id || ''}" data-discord="${m.discord_id || ''}">${m.jmeno || m.discord_username || m.ooo_id || m.discord_id}</button></td>
                   <td>${m.discord_username ? '@' + m.discord_username : ''}</td>
                   <td>${m.email || ''}${m.telefon ? ' · ' + m.telefon : ''}</td>
                   <td class="member-roles-cell">${Object.keys(m.roles || {}).join(', ')}</td>
@@ -135,7 +153,7 @@
           </table>
         </div>
       `;
-      body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
+      body.querySelectorAll('[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, btn.dataset.discord)));
     }
 
     function loadMembers() {
@@ -155,7 +173,7 @@
       const q = stripDiacritics(e.target.value.trim());
       if (!q) { renderMembers(allMembers); return; }
       const filtered = allMembers.filter(m => {
-        const haystack = stripDiacritics([m.jmeno, m.discord_username, m.email, m.telefon, m.ooo_id].filter(Boolean).join(' '));
+        const haystack = stripDiacritics([m.jmeno, m.discord_username, m.email, m.telefon, m.ooo_id, m.discord_id].filter(Boolean).join(' '));
         return haystack.includes(q);
       });
       renderMembers(filtered);
@@ -163,28 +181,48 @@
 
     function statusIcon(status) { return status === 'ok' ? '✓' : (status === 'waiting' ? '⏳' : '✗'); }
 
+    let allQuestionnaires = [];
+
     function renderQuestionnaires(list) {
       const body = document.getElementById('questionnaires-body');
-      if (!list.length) { body.innerHTML = '<p class="form-hint">Žádné nevyřízené dotazníky.</p>'; return; }
+      if (!list.length) { body.innerHTML = '<p class="form-hint">Nic nenalezeno.</p>'; return; }
       body.innerHTML = `
         <div class="admin-q-table-wrap">
           <table class="admin-q-table">
-            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Stav</th><th></th></tr></thead>
+            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Kontakt</th><th>Setkání</th><th>Stav</th><th></th></tr></thead>
             <tbody>
               ${list.map(q => `
                 <tr>
                   <td>${q.jmeno_prezdivka || q.ooo_id}</td>
                   <td>${q.timestamp || ''}</td>
                   <td>${q.patron_kdo_historicky || '—'}</td>
+                  <td>${q.probehl_kontakt ? '✓' : '✗'}</td>
+                  <td>${q.osobni_setkani ? '✓' : '✗'}</td>
                   <td>${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
-                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo-open="${q.ooo_id}">Zobrazit detail</button></td>
+                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo="${q.ooo_id}">Zobrazit detail</button></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       `;
-      body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
+      body.querySelectorAll('[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo)));
+    }
+
+    // Filtry (2026-08-24, na žádost - "patron neschválen, bez kontaktu a tak vše, co tě
+    // napadne") - aplikují se nad už načteným seznamem, žádný další dotaz na server.
+    function applyQuestionnaireFilters() {
+      const patronFilter = document.getElementById('q-filter-patron').value;
+      const noContact = document.getElementById('q-filter-no-contact').checked;
+      const noMeeting = document.getElementById('q-filter-no-meeting').checked;
+      const filtered = allQuestionnaires.filter(q => {
+        if (patronFilter === '__bez__' && q.patron_kdo_historicky) return false;
+        if (patronFilter && patronFilter !== '__bez__' && q.patron_kdo_historicky !== patronFilter) return false;
+        if (noContact && q.probehl_kontakt) return false;
+        if (noMeeting && q.osobni_setkani) return false;
+        return true;
+      });
+      renderQuestionnaires(filtered);
     }
 
     function loadQuestionnaires() {
@@ -196,13 +234,17 @@
         .then(r => r.json())
         .then(data => {
           if (!data.ok) throw new Error(data.error || 'Chyba při načítání dotazníků.');
-          renderQuestionnaires(data.questionnaires);
+          allQuestionnaires = data.questionnaires;
+          applyQuestionnaireFilters();
         });
     }
 
     document.getElementById('include-resolved-toggle').addEventListener('change', () => {
       loadQuestionnaires().catch(err => alert('Chyba: ' + err.message));
     });
+    document.getElementById('q-filter-patron').addEventListener('change', applyQuestionnaireFilters);
+    document.getElementById('q-filter-no-contact').addEventListener('change', applyQuestionnaireFilters);
+    document.getElementById('q-filter-no-meeting').addEventListener('change', applyQuestionnaireFilters);
 
     // Přístupová brána - Rada NEBO Patron (na rozdíl od admin-akce.html, co je jen pro
     // Radu). Frontend gating je jen UX - backend (requireAdminIdentity) ověřuje roli

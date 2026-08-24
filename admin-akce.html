@@ -518,7 +518,7 @@
                   <tbody>
                     ${data.registrations.map(r => `
                       <tr>
-                        <td>${r.ooo_id ? `<button type="button" class="member-link" data-ooo-open="${r.ooo_id}">${r.jmeno || r.ooo_id}</button>` : (r.jmeno || '—')}</td>
+                        <td>${(r.ooo_id || r.user_id) ? `<button type="button" class="member-link" data-ooo="${r.ooo_id || ''}" data-discord="${r.user_id || ''}">${r.jmeno || r.ooo_id || r.user_id}</button>` : (r.jmeno || '—')}</td>
                         <td>${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
                         <td>${r.typ_ucasti || ''}</td>
                         <td>${statusLabel(r.deposit_status)} (${r.deposit || 0} Kč)
@@ -537,7 +537,7 @@
                 </table>
               </div>
             `;
-            body.querySelectorAll('[data-ooo-open]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.oooOpen)));
+            body.querySelectorAll('[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, btn.dataset.discord)));
             body.querySelectorAll('[data-mark]').forEach(btn => btn.addEventListener('click', () => {
               const field = btn.dataset.mark;
               const value = btn.dataset.value || 'OK';

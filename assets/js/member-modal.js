@@ -59,7 +59,11 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function openMemberModal(oooId) {
+// oooId a discordId - ne každý člen má ooo_id (přiřazuje se až první interakcí s webem,
+// kdo přišel jen přes Discord bota, ho ještě mít nemusí) - proto Discord ID jako záložní
+// klíč, ať jde otevřít okno úplně každého, ne jen těch, co už ooo_id mají (2026-08-24,
+// oprava na žádost - "ne na všechny uživatele se nedá kliknout").
+async function openMemberModal(oooId, discordId) {
   memberModalEnsureDom();
   const overlay = document.getElementById('member-modal-overlay');
   const body = document.getElementById('member-modal-body');
@@ -71,12 +75,16 @@ async function openMemberModal(oooId) {
     body.innerHTML = '<p class="member-modal-error">Nejsi přihlášený/á.</p>';
     return;
   }
+  if (!oooId && !discordId) {
+    body.innerHTML = '<p class="member-modal-error">Chybí identifikátor člena.</p>';
+    return;
+  }
 
   try {
     const res = await fetch(API_BASE + '/api/panel-member-detail', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...identity, ooo_id: oooId }),
+      body: JSON.stringify({ ...identity, ooo_id: oooId || '', target_discord_id: oooId ? '' : discordId }),
     });
     const data = await res.json();
     if (!res.ok || !data.ok) {
@@ -112,6 +120,7 @@ function renderMemberModal(body, data) {
     questionnaireHtml = `
       <div class="member-q-fields">
         ${field('Přezdívka v dotazníku', q.jmeno_prezdivka)}
+        ${field('Profily', q.profily)}
         ${field('Upřesnění', q.upresneni)}
         ${field('Lokalita', q.lokalita)}
         ${field('Sociálně-demografické', q.socialne_demograficke)}
@@ -121,6 +130,29 @@ function renderMemberModal(body, data) {
         ${q.zna_patrony.length ? field('Zná patrony', q.zna_patrony.join(', ')) : ''}
         ${field('Přiřazený patron', q.patron_kdo_historicky)}
         ${q.locked ? field('Schválil/a', q.schvalil_patron) : ''}
+      </div>
+    `;
+    // Poznámky patrona (proběhl kontakt, osobní setkání, volný text) - dřív se psaly jen
+    // ručně do Sheetu, teď editovatelné přímo tady, u schválených i neschválených
+    // (2026-08-24, na žádost - "dělat administraci jako patron, abych nemusel do tabulky").
+    questionnaireHtml += `
+      <div class="member-notes-section">
+        <div class="member-notes-checks">
+          <label><input type="checkbox" id="member-kontakt-check" ${q.probehl_kontakt ? 'checked' : ''}> Proběhl první kontakt</label>
+          <label><input type="checkbox" id="member-setkani-check" ${q.osobni_setkani ? 'checked' : ''}> Proběhlo osobní setkání</label>
+        </div>
+        <div>
+          <label class="member-notes-label" for="member-poznamka">Poznámka</label>
+          <textarea id="member-poznamka">${escapeHtml(q.poznamka)}</textarea>
+        </div>
+        <div>
+          <label class="member-notes-label" for="member-poznamka2">Poznámka 2</label>
+          <textarea id="member-poznamka2">${escapeHtml(q.poznamka2)}</textarea>
+        </div>
+        <div>
+          <button type="button" class="btn btn-outline btn-sm" id="member-save-notes-btn">Uložit poznámky</button>
+          <p class="member-modal-msg" id="member-notes-msg"></p>
+        </div>
       </div>
     `;
     if (!q.locked) {
@@ -178,7 +210,7 @@ function renderMemberModal(body, data) {
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se uložit.'; return; }
         msgEl.textContent = 'Patron přiřazen.';
-        openMemberModal(data.ooo_id);
+        openMemberModal(data.ooo_id, data.discord_id);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
     });
   }
@@ -196,8 +228,33 @@ function renderMemberModal(body, data) {
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se schválit.'; return; }
         msgEl.textContent = 'Schváleno.';
-        openMemberModal(data.ooo_id);
+        openMemberModal(data.ooo_id, data.discord_id);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
+    });
+  }
+
+  const saveNotesBtn = document.getElementById('member-save-notes-btn');
+  if (saveNotesBtn) {
+    saveNotesBtn.addEventListener('click', async () => {
+      const notesMsgEl = document.getElementById('member-notes-msg');
+      notesMsgEl.textContent = 'Ukládám…';
+      const identity = memberModalIdentityPayload();
+      try {
+        const res = await fetch(API_BASE + '/api/panel-review-questionnaire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...identity, ooo_id: data.ooo_id, action: 'update_notes',
+            probehl_kontakt: document.getElementById('member-kontakt-check').checked,
+            osobni_setkani: document.getElementById('member-setkani-check').checked,
+            poznamka: document.getElementById('member-poznamka').value,
+            poznamka2: document.getElementById('member-poznamka2').value,
+          }),
+        });
+        const resData = await res.json();
+        if (!res.ok || !resData.ok) { notesMsgEl.textContent = resData.error || 'Nepodařilo se uložit.'; return; }
+        notesMsgEl.textContent = 'Uloženo.';
+      } catch (err) { notesMsgEl.textContent = 'Chyba: ' + err.message; }
     });
   }
 }
