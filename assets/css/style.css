@@ -722,3 +722,32 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .member-link { color: var(--primary); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; background: none; border: none; padding: 0; font: inherit; }
 .member-link:hover { color: var(--primary-dark); }
 .mt-lg { margin-top: 32px; }
+
+/* ---------- Admin tabulky - responzivní na mobilu (2026-08-24, na žádost - vodorovné
+   posouvání "není přehledný") ---------- */
+.admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.admin-tabs a { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.admin-tabs a:hover { color: var(--text); }
+.admin-tabs a.active { color: var(--primary); border-bottom-color: var(--primary); }
+.admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+.admin-card h3 { margin: 0 0 12px; }
+.admin-responsive-table-wrap { overflow-x: auto; }
+.admin-responsive-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 0.88rem; }
+.admin-responsive-table th, .admin-responsive-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top;
+}
+.admin-responsive-table th { font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); }
+@media (max-width: 700px) {
+  /* Na úzkém displeji se řádek tabulky mění na kartu s popisky místo vodorovného
+     posouvání - klasický "responsive table" vzorec, žádný JS navíc, jen data-label. */
+  .admin-responsive-table-wrap { overflow-x: visible; }
+  .admin-responsive-table { min-width: 0; }
+  .admin-responsive-table thead { display: none; }
+  .admin-responsive-table, .admin-responsive-table tbody, .admin-responsive-table tr, .admin-responsive-table td { display: block; width: 100%; }
+  .admin-responsive-table tr { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 10px; }
+  .admin-responsive-table td { border-bottom: none; padding: 4px 0; white-space: normal; }
+  .admin-responsive-table td[data-label]::before {
+    content: attr(data-label) ": "; font-weight: 600; color: var(--text-muted);
+    font-size: 0.78rem; text-transform: uppercase;
+  }
+}

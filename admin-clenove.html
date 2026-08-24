@@ -11,19 +11,7 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <title>Administrace členů — OOO Community</title>
   <style>
-    .admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
-    .admin-tabs a { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
-    .admin-tabs a:hover { color: var(--text); }
-    .admin-tabs a.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .admin-event-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
-    .admin-event-card h3 { margin: 0 0 12px; }
     .member-search-input { width: 100%; max-width: 420px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-size: 0.95rem; margin-bottom: 16px; }
-    .admin-members-table-wrap, .admin-q-table-wrap { overflow-x: auto; }
-    .admin-members-table, .admin-q-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 0.88rem; }
-    .admin-members-table th, .admin-members-table td, .admin-q-table th, .admin-q-table td {
-      text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top;
-    }
-    .admin-members-table th, .admin-q-table th { font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); }
     .member-roles-cell { font-size: 0.8rem; color: var(--text-muted); }
     .hidden { display: none !important; }
   </style>
@@ -53,7 +41,7 @@
   <section class="section">
     <div class="container">
       <span class="eyebrow">Administrace</span>
-      <h1>Členové a dotazníky</h1>
+      <h1>Přehled členů</h1>
 
       <div id="gate-loading" class="status-panel info">Ověřuji oprávnění…</div>
 
@@ -65,37 +53,11 @@
       <div id="admin-content" class="hidden">
         <div class="admin-tabs">
           <a href="admin-akce.html">Akce a přihlášky</a>
-          <a href="admin-clenove.html" class="active">Členové a dotazníky</a>
+          <a href="admin-dotazniky.html">Fronta dotazníků</a>
+          <a href="admin-clenove.html" class="active">Přehled členů</a>
         </div>
 
-        <div class="admin-event-card">
-          <h3>Fronta dotazníků</h3>
-          <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:0.9rem; cursor:pointer;">
-            <input type="checkbox" id="include-resolved-toggle">
-            Zobrazit i vyřízené
-          </label>
-          <div class="q-filters" style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
-            <label style="font-size:0.88rem;">Patron:
-              <select id="q-filter-patron" style="margin-left:6px; padding:6px 8px; border-radius:8px; border:1.5px solid var(--border);">
-                <option value="">Všichni</option>
-                <option value="__bez__">Bez přiřazeného patrona</option>
-                <option value="Káča & Adam">Káča &amp; Adam</option>
-                <option value="Viktorie & Oliver">Viktorie &amp; Oliver</option>
-                <option value="Karin & Zbyšek">Karin &amp; Zbyšek</option>
-                <option value="Káča">Káča</option>
-              </select>
-            </label>
-            <label style="display:flex; align-items:center; gap:6px; font-size:0.88rem; cursor:pointer;">
-              <input type="checkbox" id="q-filter-no-contact"> Bez kontaktu
-            </label>
-            <label style="display:flex; align-items:center; gap:6px; font-size:0.88rem; cursor:pointer;">
-              <input type="checkbox" id="q-filter-no-meeting"> Bez osobního setkání
-            </label>
-          </div>
-          <div id="questionnaires-body"><p class="form-hint">Načítám…</p></div>
-        </div>
-
-        <div class="admin-event-card">
+        <div class="admin-card">
           <h3>Přehled členů</h3>
           <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
             <input type="text" id="member-search" class="member-search-input" style="margin-bottom:0; flex:1 1 260px;" placeholder="Hledat jméno, Discord, e-mail, telefon…">
@@ -140,20 +102,23 @@
       return (str || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     }
 
+    // data-label na každém <td> - na mobilu (viz style.css .admin-responsive-table) se
+    // řádek změní na kartu s popisky místo vodorovného posouvání (2026-08-24, na žádost -
+    // "posouvání do strany u členů na mobilu není dobrý").
     function renderMembers(list) {
       const body = document.getElementById('members-body');
       if (!list.length) { body.innerHTML = '<p class="form-hint">Nic nenalezeno.</p>'; return; }
       body.innerHTML = `
-        <div class="admin-members-table-wrap">
-          <table class="admin-members-table">
+        <div class="admin-responsive-table-wrap">
+          <table class="admin-responsive-table">
             <thead><tr><th>Jméno</th><th>Discord</th><th>Kontakt</th><th>Role</th></tr></thead>
             <tbody>
               ${list.map(m => `
                 <tr>
-                  <td><button type="button" class="member-link" data-ooo="${m.ooo_id || ''}" data-discord="${m.discord_id || ''}">${m.jmeno || m.discord_username || m.ooo_id || m.discord_id}</button></td>
-                  <td>${m.discord_username ? '@' + m.discord_username : ''}</td>
-                  <td>${m.email || ''}${m.telefon ? ' · ' + m.telefon : ''}</td>
-                  <td class="member-roles-cell">${Object.keys(m.roles || {}).join(', ')}</td>
+                  <td data-label="Jméno"><button type="button" class="member-link" data-ooo="${m.ooo_id || ''}" data-discord="${m.discord_id || ''}">${m.jmeno || m.discord_username || m.ooo_id || m.discord_id}</button></td>
+                  <td data-label="Discord">${m.discord_username ? '@' + m.discord_username : ''}</td>
+                  <td data-label="Kontakt">${m.email || ''}${m.telefon ? ' · ' + m.telefon : ''}</td>
+                  <td data-label="Role" class="member-roles-cell">${Object.keys(m.roles || {}).join(', ')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -205,79 +170,6 @@
     document.getElementById('member-search').addEventListener('input', applyMemberFilters);
     document.getElementById('member-role-filter').addEventListener('change', applyMemberFilters);
 
-    function statusIcon(status) { return status === 'ok' ? '✓' : (status === 'waiting' ? '⏳' : '✗'); }
-
-    let allQuestionnaires = [];
-
-    function renderQuestionnaires(list) {
-      const body = document.getElementById('questionnaires-body');
-      if (!list.length) { body.innerHTML = '<p class="form-hint">Nic nenalezeno.</p>'; return; }
-      body.innerHTML = `
-        <div class="admin-q-table-wrap">
-          <table class="admin-q-table">
-            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Kontakt</th><th>Setkání</th><th>Stav</th><th></th></tr></thead>
-            <tbody>
-              ${list.map(q => `
-                <tr>
-                  <td>${q.jmeno_prezdivka || q.discord_jmeno_historicke || '(bez jména)'}${!q.ooo_id ? ' <span class="member-roles-cell" title="Starý import bez napojení na profil">(starý dotazník)</span>' : ''}</td>
-                  <td>${q.timestamp || ''}</td>
-                  <td title="${(q.patron_kdo_historicky || '').replace(/"/g, '&quot;')}">${q.patron_normalized || q.patron_kdo_historicky || '—'}</td>
-                  <td>${q.probehl_kontakt ? '✓' : '✗'}</td>
-                  <td>${q.osobni_setkani ? '✓' : '✗'}</td>
-                  <td>${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
-                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo="${q.ooo_id || ''}" data-row-index="${q.row_index}">Zobrazit detail</button></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-      body.querySelectorAll('[data-row-index]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, '', btn.dataset.ooo ? '' : btn.dataset.rowIndex)));
-    }
-
-    // Filtry (2026-08-24, na žádost - "patron neschválen, bez kontaktu a tak vše, co tě
-    // napadne") - aplikují se nad už načteným seznamem, žádný další dotaz na server.
-    // Filtruje se podle patron_normalized (2026-08-24, na žádost - "ty řetězce nejsou
-    // stejný ale logika ano") - staré dotazníky mají patrona zapsaného volným textem
-    // (lokalita, IG, Discord jméno), co se s dnešním krátkým výběrem nikdy nerovnalo,
-    // takže filtr na starých datech nikdy nic nenašel. Backend teď posílá i normalizovanou
-    // verzi (patron_normalized), spočítanou podle toho, čí jméno se ve starém textu
-    // objeví - viz normalizePatron v lib/members-row.js.
-    function applyQuestionnaireFilters() {
-      const patronFilter = document.getElementById('q-filter-patron').value;
-      const noContact = document.getElementById('q-filter-no-contact').checked;
-      const noMeeting = document.getElementById('q-filter-no-meeting').checked;
-      const filtered = allQuestionnaires.filter(q => {
-        if (patronFilter === '__bez__' && q.patron_normalized) return false;
-        if (patronFilter && patronFilter !== '__bez__' && q.patron_normalized !== patronFilter) return false;
-        if (noContact && q.probehl_kontakt) return false;
-        if (noMeeting && q.osobni_setkani) return false;
-        return true;
-      });
-      renderQuestionnaires(filtered);
-    }
-
-    function loadQuestionnaires() {
-      const includeResolved = document.getElementById('include-resolved-toggle').checked;
-      return fetch(API_BASE + '/api/panel-list-questionnaires', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...identityPayload(), include_resolved: includeResolved }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (!data.ok) throw new Error(data.error || 'Chyba při načítání dotazníků.');
-          allQuestionnaires = data.questionnaires;
-          applyQuestionnaireFilters();
-        });
-    }
-
-    document.getElementById('include-resolved-toggle').addEventListener('change', () => {
-      loadQuestionnaires().catch(err => alert('Chyba: ' + err.message));
-    });
-    document.getElementById('q-filter-patron').addEventListener('change', applyQuestionnaireFilters);
-    document.getElementById('q-filter-no-contact').addEventListener('change', applyQuestionnaireFilters);
-    document.getElementById('q-filter-no-meeting').addEventListener('change', applyQuestionnaireFilters);
-
     // Přístupová brána - Rada NEBO Patron (na rozdíl od admin-akce.html, co je jen pro
     // Radu). Frontend gating je jen UX - backend (requireAdminIdentity) ověřuje roli
     // znovu, nezávisle, u každého volání.
@@ -299,8 +191,7 @@
           } else {
             if (isRada) navAdmin.classList.remove('hidden');
             adminContent.classList.remove('hidden');
-            Promise.all([loadMembers(), loadQuestionnaires()])
-              .catch(err => alert('Chyba při načítání: ' + err.message));
+            loadMembers().catch(err => alert('Chyba při načítání: ' + err.message));
           }
         })
         .catch(() => {
