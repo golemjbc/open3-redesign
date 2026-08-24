@@ -17,7 +17,9 @@ function memberModalIdentityPayload() {
 // složce fotek (stejné omezení, jaké platí dnes).
 function memberModalImageUrl(url) {
   if (!url) return null;
-  const driveMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  // Historické odkazy (Google Forms import) mají tvar "...open?id=FILEID", ne "/d/FILEID/"
+  // - stejná oprava jako na serveru (2026-08-24, "fotky tam pořád nejsou").
+  const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (driveMatch) return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w400`;
   if (url.includes('photos.app.goo.gl') || url.includes('photos.google.com')) {
     return 'https://images.weserv.nl/?url=' + encodeURIComponent(url);
@@ -76,8 +78,10 @@ function escapeHtml(str) {
 // oooId a discordId - ne každý člen má ooo_id (přiřazuje se až první interakcí s webem,
 // kdo přišel jen přes Discord bota, ho ještě mít nemusí) - proto Discord ID jako záložní
 // klíč, ať jde otevřít okno úplně každého, ne jen těch, co už ooo_id mají (2026-08-24,
-// oprava na žádost - "ne na všechny uživatele se nedá kliknout").
-async function openMemberModal(oooId, discordId) {
+// oprava na žádost - "ne na všechny uživatele se nedá kliknout"). dotaznikRowIndex otevírá
+// OSIŘELÝ dotazník (starý import z Google Forms bez ooo_id, 2026-08-24, na žádost - "ty
+// stavy že staré tabulky nesouhlasí") - použije se jen když oooId i discordId chybí.
+async function openMemberModal(oooId, discordId, dotaznikRowIndex) {
   memberModalEnsureDom();
   const overlay = document.getElementById('member-modal-overlay');
   const body = document.getElementById('member-modal-body');
@@ -89,7 +93,7 @@ async function openMemberModal(oooId, discordId) {
     body.innerHTML = '<p class="member-modal-error">Nejsi přihlášený/á.</p>';
     return;
   }
-  if (!oooId && !discordId) {
+  if (!oooId && !discordId && !dotaznikRowIndex) {
     body.innerHTML = '<p class="member-modal-error">Chybí identifikátor člena.</p>';
     return;
   }
@@ -98,7 +102,12 @@ async function openMemberModal(oooId, discordId) {
     const res = await fetch(API_BASE + '/api/panel-member-detail', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...identity, ooo_id: oooId || '', target_discord_id: oooId ? '' : discordId }),
+      body: JSON.stringify({
+        ...identity,
+        ooo_id: oooId || '',
+        target_discord_id: oooId ? '' : (discordId || ''),
+        dotaznik_row_index: (!oooId && !discordId) ? (dotaznikRowIndex || '') : '',
+      }),
     });
     const data = await res.json();
     if (!res.ok || !data.ok) {
@@ -111,6 +120,20 @@ async function openMemberModal(oooId, discordId) {
   }
 }
 
+// Cíl akce (schválit/zamítnout/přiřadit patrona/poznámky) - u osiřelého dotazníku (bez
+// napojení na člena) se cílí přes dotaznik_row_index, jinak přes ooo_id.
+function memberModalActionTarget(data) {
+  return data.questionnaire.orphaned
+    ? { dotaznik_row_index: data.questionnaire.dotaznik_row_index }
+    : { ooo_id: data.ooo_id };
+}
+
+function memberModalReopen(data) {
+  return data.questionnaire.orphaned
+    ? openMemberModal('', '', data.questionnaire.dotaznik_row_index)
+    : openMemberModal(data.ooo_id, data.discord_id);
+}
+
 function renderMemberModal(body, data) {
   // Fotka se dřív zobrazovala přímým odkazem na Disk - fungovalo to jen tomu, kdo byl v
   // prohlížeči zrovna přihlášený Google účtem se sdíleným přístupem (na žádost uživatele
@@ -121,13 +144,15 @@ function renderMemberModal(body, data) {
     ? (data.questionnaire.foto_data_url || (data.questionnaire.foto_url.length ? memberModalImageUrl(data.questionnaire.foto_url[0]) : null))
     : null;
 
-  const accessRows = ['A', 'B', 'C'].map(typ => {
+  // Osiřelý dotazník (bez napojení na profil) nemá koho by se stav přístupu/historie
+  // týkaly - access je od backendu null.
+  const accessRows = data.access ? ['A', 'B', 'C'].map(typ => {
     const a = data.access[typ];
     return `<div class="member-access-row member-access-${a.status}">
       <span class="member-access-icon">${memberModalStatusIcon(a.status)}</span>
       <span class="member-access-label">Typ ${typ}: ${escapeHtml(a.label)}</span>
     </div>`;
-  }).join('');
+  }).join('') : '';
 
   const historyRows = data.eventHistory.length
     ? data.eventHistory.map(h => `<li>${escapeHtml(h.nazev)} <span class="member-history-status">(záloha: ${escapeHtml(h.deposit_status || '—')}${h.doplatek_status ? ', doplatek: ' + escapeHtml(h.doplatek_status) : ''})</span></li>`).join('')
@@ -138,7 +163,12 @@ function renderMemberModal(body, data) {
     const q = data.questionnaire;
     const field = (label, val) => val ? `<div class="member-q-field"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(val)}</div>` : '';
     const stavLabel = { approved: 'Schváleno', rejected: 'Zamítnuto', pending: 'Čeká na rozhodnutí' }[q.souhlas_status] || q.souhlas_status;
-    questionnaireHtml = `
+    questionnaireHtml = q.orphaned ? `
+      <p class="member-modal-msg" style="background:var(--warning-bg); color:var(--warning); padding:10px 14px; border-radius:var(--radius-sm);">
+        Starý dotazník z historického importu (Google Forms) bez napojení na aktuální profil člena - jméno a Discord jméno níže jsou z doby vyplnění, mohou se od té doby lišit. Podle nich zkus dohledat, o koho jde; propojení s profilem se zatím dělá ručně v tabulce.
+      </p>
+    ` : '';
+    questionnaireHtml += `
       <div class="member-q-fields">
         ${field('Přezdívka v dotazníku', q.jmeno_prezdivka)}
         ${field('Profily', q.profily)}
@@ -222,9 +252,8 @@ function renderMemberModal(body, data) {
         </p>
       </div>
     </div>
-    <div class="member-access-list">${accessRows}</div>
-    <h4>Historie akcí</h4>
-    <ul class="member-history-list">${historyRows}</ul>
+    ${data.access ? `<div class="member-access-list">${accessRows}</div>` : ''}
+    ${data.access ? `<h4>Historie akcí</h4><ul class="member-history-list">${historyRows}</ul>` : ''}
     <h4>Dotazník</h4>
     ${questionnaireHtml}
   `;
@@ -253,12 +282,12 @@ function renderMemberModal(body, data) {
         const res = await fetch(API_BASE + '/api/panel-review-questionnaire', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...identity, ooo_id: data.ooo_id, action: 'assign_patron', patron: select.value }),
+          body: JSON.stringify({ ...identity, ...memberModalActionTarget(data), action: 'assign_patron', patron: select.value }),
         });
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se uložit.'; return; }
         msgEl.textContent = 'Patron přiřazen.';
-        openMemberModal(data.ooo_id, data.discord_id);
+        memberModalReopen(data);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
     });
   }
@@ -271,12 +300,12 @@ function renderMemberModal(body, data) {
         const res = await fetch(API_BASE + '/api/panel-review-questionnaire', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...identity, ooo_id: data.ooo_id, action: 'approve' }),
+          body: JSON.stringify({ ...identity, ...memberModalActionTarget(data), action: 'approve' }),
         });
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se schválit.'; return; }
         msgEl.textContent = 'Schváleno.';
-        openMemberModal(data.ooo_id, data.discord_id);
+        memberModalReopen(data);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
     });
   }
@@ -289,12 +318,12 @@ function renderMemberModal(body, data) {
         const res = await fetch(API_BASE + '/api/panel-review-questionnaire', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...identity, ooo_id: data.ooo_id, action: 'reject' }),
+          body: JSON.stringify({ ...identity, ...memberModalActionTarget(data), action: 'reject' }),
         });
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se zamítnout.'; return; }
         msgEl.textContent = 'Zamítnuto.';
-        openMemberModal(data.ooo_id, data.discord_id);
+        memberModalReopen(data);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
     });
   }
@@ -310,7 +339,7 @@ function renderMemberModal(body, data) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...identity, ooo_id: data.ooo_id, action: 'update_notes',
+            ...identity, ...memberModalActionTarget(data), action: 'update_notes',
             probehl_kontakt: document.getElementById('member-kontakt-check').checked,
             osobni_setkani: document.getElementById('member-setkani-check').checked,
             poznamka: document.getElementById('member-poznamka').value,

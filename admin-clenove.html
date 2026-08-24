@@ -97,7 +97,14 @@
 
         <div class="admin-event-card">
           <h3>Přehled členů</h3>
-          <input type="text" id="member-search" class="member-search-input" placeholder="Hledat jméno, Discord, e-mail, telefon…">
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
+            <input type="text" id="member-search" class="member-search-input" style="margin-bottom:0; flex:1 1 260px;" placeholder="Hledat jméno, Discord, e-mail, telefon…">
+            <label style="font-size:0.88rem; white-space:nowrap;">Role:
+              <select id="member-role-filter" style="margin-left:6px; padding:10px 8px; border-radius:8px; border:1.5px solid var(--border);">
+                <option value="">Všechny role</option>
+              </select>
+            </label>
+          </div>
           <div id="members-body"><p class="form-hint">Načítám…</p></div>
         </div>
       </div>
@@ -165,19 +172,38 @@
         .then(data => {
           if (!data.ok) throw new Error(data.error || 'Chyba při načítání členů.');
           allMembers = data.members;
-          renderMembers(allMembers);
+          populateRoleFilter(allMembers);
+          applyMemberFilters();
         });
     }
 
-    document.getElementById('member-search').addEventListener('input', (e) => {
-      const q = stripDiacritics(e.target.value.trim());
-      if (!q) { renderMembers(allMembers); return; }
+    // Filtr podle role (2026-08-24, na žádost) - seznam rolí se sestaví z dat samotných
+    // (ne napevno v kódu), ať se automaticky přizpůsobí, když přibude/zmizí sloupec role.
+    function populateRoleFilter(members) {
+      const select = document.getElementById('member-role-filter');
+      const current = select.value;
+      const roles = new Set();
+      members.forEach(m => Object.keys(m.roles || {}).forEach(r => roles.add(r)));
+      select.innerHTML = '<option value="">Všechny role</option>' +
+        [...roles].sort().map(r => `<option value="${escapeHtmlAttr(r)}">${escapeHtmlAttr(r)}</option>`).join('');
+      select.value = [...roles].includes(current) ? current : '';
+    }
+    function escapeHtmlAttr(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    function applyMemberFilters() {
+      const q = stripDiacritics(document.getElementById('member-search').value.trim());
+      const roleFilter = document.getElementById('member-role-filter').value;
       const filtered = allMembers.filter(m => {
+        if (roleFilter && !(m.roles || {})[roleFilter]) return false;
+        if (!q) return true;
         const haystack = stripDiacritics([m.jmeno, m.discord_username, m.email, m.telefon, m.ooo_id, m.discord_id].filter(Boolean).join(' '));
         return haystack.includes(q);
       });
       renderMembers(filtered);
-    });
+    }
+
+    document.getElementById('member-search').addEventListener('input', applyMemberFilters);
+    document.getElementById('member-role-filter').addEventListener('change', applyMemberFilters);
 
     function statusIcon(status) { return status === 'ok' ? '✓' : (status === 'waiting' ? '⏳' : '✗'); }
 
@@ -193,20 +219,20 @@
             <tbody>
               ${list.map(q => `
                 <tr>
-                  <td>${q.jmeno_prezdivka || q.ooo_id}</td>
+                  <td>${q.jmeno_prezdivka || q.discord_jmeno_historicke || '(bez jména)'}${!q.ooo_id ? ' <span class="member-roles-cell" title="Starý import bez napojení na profil">(starý dotazník)</span>' : ''}</td>
                   <td>${q.timestamp || ''}</td>
                   <td>${q.patron_kdo_historicky || '—'}</td>
                   <td>${q.probehl_kontakt ? '✓' : '✗'}</td>
                   <td>${q.osobni_setkani ? '✓' : '✗'}</td>
                   <td>${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
-                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo="${q.ooo_id}">Zobrazit detail</button></td>
+                  <td><button type="button" class="btn btn-outline btn-sm" data-ooo="${q.ooo_id || ''}" data-row-index="${q.row_index}">Zobrazit detail</button></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       `;
-      body.querySelectorAll('[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo)));
+      body.querySelectorAll('[data-row-index]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, '', btn.dataset.ooo ? '' : btn.dataset.rowIndex)));
     }
 
     // Filtry (2026-08-24, na žádost - "patron neschválen, bez kontaktu a tak vše, co tě
