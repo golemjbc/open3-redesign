@@ -401,19 +401,21 @@
             }
             form.classList.add('hidden');
             // Rovnou ukázat Discord tlačítko/stav (2026-08-24, na žádost po testu) -
-            // ať člověk nemusí čekat na e-mail, stejná informace je i tam.
+            // ať člověk nemusí čekat na e-mail, stejná informace je i tam. Discord tu
+            // NENÍ povinná podmínka - je to jen věc, co stojí za to zkusit mezitím;
+            // nepovede-li se to, patron pomůže přímo na schůzce (na výslovnou žádost).
             const discordHtml = data.discord_already_paired
               ? '<p style="margin:12px 0 0;">Discord už máš propojený, není potřeba nic dalšího klikat.</p>'
               : (data.discord_cta_url
-                ? `<a href="${data.discord_cta_url}" target="_blank" class="btn btn-primary" style="margin-top:12px;">Propojit a otevřít Discord</a>`
+                ? `<p style="margin:12px 0 8px;" class="form-hint">V mezičase se zkus připojit na Discord - pokud se to nepovede, patron ti s tím pomůže na schůzce.</p><a href="${data.discord_cta_url}" target="_blank" class="btn btn-primary">Zkusit propojit Discord</a>`
                 : '');
             resultPanel.innerHTML = data.updated ? `
               <h4 style="margin-top:0;">Změny uložené!</h4>
-              <p>Dotazník jsme aktualizovali. Teď ho posoudí patron a ozve se ti na osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
+              <p>Dotazník jsme aktualizovali. Patron si ho prohlédne a ozve se ti, abyste si domluvili osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
               ${discordHtml}
             ` : `
               <h4 style="margin-top:0;">Díky za vyplnění!</h4>
-              <p>Dotazník máme. Teď ho posoudí patron a ozve se ti na osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
+              <p>Dotazník máme. Patron si ho prohlédne a ozve se ti, abyste si domluvili osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
               ${discordHtml}
             `;
             resultPanel.classList.remove('hidden');
