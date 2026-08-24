@@ -35,7 +35,7 @@
   <section class="section">
     <div class="container" style="max-width:640px;">
       <span class="eyebrow">Vstupní dotazník</span>
-      <h1>Pojďme se poznat</h1>
+      <h1>Dotazník k účasti na akcích Kinky Events</h1>
       <p id="page-intro" class="form-hint" style="font-size:0.9rem; margin-bottom:24px;">
         Vyplň nám prosím pár údajů, abychom věděli co a jak s tebou máme komunikovat. Dotazník je jeden
         společný pro všechny akce Kinky Events — jakmile ho jednou vyplníš, platí i pro další podobné akce,
@@ -102,11 +102,10 @@
           <label class="form-label">Znáš se s někým z patronů? *</label>
           <div class="form-hint" style="margin:0 0 8px;">Klidně zaškrtni víc jmen, nebo "Neznám", pokud nikoho z nich neznáš.</div>
           <ul class="pref-list" id="q-patroni-list">
+            <li><label><input type="checkbox" name="zna_patrony" value="Káča & Adam"> Káča &amp; Adam</label></li>
+            <li><label><input type="checkbox" name="zna_patrony" value="Viktorie & Oliver"> Viktorie &amp; Oliver</label></li>
+            <li><label><input type="checkbox" name="zna_patrony" value="Karin & Zbyšek"> Karin &amp; Zbyšek</label></li>
             <li><label><input type="checkbox" name="zna_patrony" value="Káča"> Káča</label></li>
-            <li><label><input type="checkbox" name="zna_patrony" value="Karin"> Karin</label></li>
-            <li><label><input type="checkbox" name="zna_patrony" value="Zbyšek"> Zbyšek</label></li>
-            <li><label><input type="checkbox" name="zna_patrony" value="Oliver&Viktorie"> Oliver &amp; Viktorie</label></li>
-            <li><label><input type="checkbox" name="zna_patrony" value="Adam"> Adam</label></li>
             <li><label><input type="checkbox" name="zna_patrony" value="Neznám" id="patron-neznam"> Neznám</label></li>
           </ul>
         </div>
@@ -116,13 +115,6 @@
           <input type="file" class="form-control" id="q-foto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple required>
           <div class="form-hint">Obrázky (JPEG/PNG/WebP/HEIC), max 8 MB každý, max 5 fotek.</div>
           <div id="foto-preview" class="hidden" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;"></div>
-        </div>
-
-        <div class="form-group">
-          <label style="display:flex; gap:8px; align-items:flex-start; font-size:0.9rem;">
-            <input type="checkbox" id="q-kultura" required style="margin-top:3px;">
-            <span>Znáš, rozumíš, souhlasíš a zavazuješ se dodržovat <a href="https://www.instagram.com/ooo.community" target="_blank">kulturu Kinky Events</a>? *</span>
-          </label>
         </div>
 
         <div class="form-group">
@@ -267,7 +259,6 @@
       const lokalitaInput = document.getElementById('q-lokalita');
       const demoInput = document.getElementById('q-demo');
       const situaceInput = document.getElementById('q-situace');
-      const kulturaInput = document.getElementById('q-kultura');
       const gdprInput = document.getElementById('q-gdpr');
 
       function selectedUpresneni() {
@@ -288,12 +279,10 @@
           && situaceInput.value.trim()
           && selectedPatrony().length > 0
           && selectedPhotos.length > 0 && selectedPhotos.every(Boolean)
-          && kulturaInput.checked
           && gdprInput.checked;
         submitBtn.disabled = !ok;
       }
       [jmenoInput, lokalitaInput, demoInput, situaceInput, jineText].forEach(el => el.addEventListener('input', updateSubmitState));
-      kulturaInput.addEventListener('change', updateSubmitState);
       gdprInput.addEventListener('change', updateSubmitState);
 
       form.addEventListener('submit', function (e) {
@@ -318,7 +307,6 @@
             aktualni_situace: situaceInput.value.trim(),
             co_nabidnout: document.getElementById('q-nabidnout').value.trim(),
             sny_prani: document.getElementById('q-sny').value.trim(),
-            kultura_souhlas: kulturaInput.checked,
             gdpr_souhlas: gdprInput.checked,
             zna_patrony: selectedPatrony(),
             photos: selectedPhotos,
