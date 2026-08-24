@@ -224,16 +224,22 @@
                 // 2026-08-23 - přesně tenhle případ nastal a přihláška šla špatnou cestou).
                 const isGoogleUser = !!(currentUser && (currentUser.provider === 'google' || /^google_/.test(currentUser.userId || '')));
                 const isPublicEvent = event.typ_akce === 'A';
+                // Typ B (jen role na Discordu, žádné schvalování) přes Google umí endpoint
+                // od 2026-08-24 - formulář se zobrazí stejně jako u A, jen po odeslání
+                // (nebo návratu na stránku) může přijít needs_discord_role místo platby,
+                // viz submit handler a checkAlreadyRegistered níž. Typ C (dotazník +
+                // schválení patronem, Fáze 5) zatím není postavený vůbec.
+                const isSupportedByGoogle = isPublicEvent || event.typ_akce === 'B';
 
-                if (isGoogleUser && !isPublicEvent) {
+                if (isGoogleUser && !isSupportedByGoogle) {
                   return `
                     <div id="registration-block" class="status-panel info">
                       <h4 style="margin-top:0;">Tahle akce vyžaduje Discord</h4>
-                      <p style="margin-bottom:0;">Akce tohoto typu vyžaduje roli na Discordu. Přihlášení přes Google zatím funguje jen pro veřejné akce — registrace na tenhle typ akce přes Google se připravuje.</p>
+                      <p style="margin-bottom:0;">Akce tohoto typu vyžaduje roli na Discordu. Přihlášení přes Google zatím funguje jen pro veřejné a členské akce — registrace na tenhle typ akce přes Google se připravuje.</p>
                     </div>`;
                 }
 
-                if (isGoogleUser && isPublicEvent) {
+                if (isGoogleUser && isSupportedByGoogle) {
                   return `
                     <div id="registration-block">
                       <h3>Přihláška na akci</h3>
@@ -391,6 +397,19 @@
       }
       function hidePanel(id) { document.getElementById(id).classList.add('hidden'); }
 
+      // Typ B (2026-08-24): dokud chybí role na Discordu, platba se vůbec nezobrazuje -
+      // stejná informace jako v e-mailu (needs_discord_role z register-event-google /
+      // my-registrations), jen tlačítko tu vede na obecnou pozvánku (stejnou jako v
+      // patičce) - přesnou OAuth/přímou variantu podle stavu spárování řeší e-mail.
+      function showNeedsDiscordRolePanel() {
+        document.getElementById('registration-block').classList.add('hidden');
+        showPanel('registration-info', `
+          <h4 style="margin-top:0;">Ještě jeden krok</h4>
+          <p>Tvoje přihláška je přijatá. Tahle akce vyžaduje roli na Discordu (dokončit uvítací proces/pravidla serveru) — poslali jsme ti e-mail s tlačítkem, které tě tam rovnou zavede.</p>
+          <a href="https://discord.gg/qYCAubmDQc" target="_blank" class="btn btn-primary">Otevřít Discord</a>
+        `);
+      }
+
       function loadPaymentInfo(userId, userName, typUcasti, paymentType, idParam) {
         if (!userId) return;
         const qp = new URLSearchParams({
@@ -437,6 +456,10 @@
       // Sdílené vyhodnocení "už je přihlášen/á" - stejná logika pro Discord i Google cestu,
       // liší se jen tím, podle čeho se řádek v Prihlasky hledá (user_id vs ooo_id).
       function renderRegistrationStatus(found, id, userName, idParam) {
+        if (found && found.needs_discord_role) {
+          showNeedsDiscordRolePanel();
+          return;
+        }
         const p = parsePrihlaskaRow(found);
         const depositOK = p.deposit_status?.toUpperCase() === 'OK';
         const doplatekOK = p.doplatek_status?.toUpperCase() === 'OK';
@@ -595,7 +618,12 @@
                   event_id: event.event_id, ooo_id: data.ooo_id,
                   deposit_status: data.deposit_status, doplatek_status: data.doplatek_status,
                   doplatek: data.deposit_amount, partner: typUcastiG,
+                  needs_discord_role: data.needs_discord_role,
                 }, data.ooo_id, data.name || data.email || '', 'ooo_id');
+                return;
+              }
+              if (data.needs_discord_role) {
+                showNeedsDiscordRolePanel();
                 return;
               }
               document.getElementById('registration-block').classList.add('hidden');
