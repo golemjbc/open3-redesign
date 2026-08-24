@@ -87,9 +87,27 @@
             <div class="form-group"><label class="form-label">Název</label><input id="f-nazev" class="form-control"></div>
             <div class="form-group"><label class="form-label">Místo</label><input id="f-místo" class="form-control"></div>
             <div class="form-group"><label class="form-label">Lokalita (přesná adresa, po platbě)</label><input id="f-lokalita_presna" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Datum od</label><input id="f-datum od" class="form-control" placeholder="např. 12.9.2026"></div>
-            <div class="form-group"><label class="form-label">Datum do</label><input id="f-datum_do" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Konec registrace</label><input id="f-registrace_konec" class="form-control"></div>
+            <div class="form-group">
+              <label class="form-label">Datum od</label>
+              <div style="display:flex; gap:8px;">
+                <input type="date" id="f-datum od-date" class="form-control">
+                <input type="time" id="f-datum od-time" class="form-control" style="max-width:110px;">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Datum do</label>
+              <div style="display:flex; gap:8px;">
+                <input type="date" id="f-datum_do-date" class="form-control">
+                <input type="time" id="f-datum_do-time" class="form-control" style="max-width:110px;">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Konec registrace</label>
+              <div style="display:flex; gap:8px;">
+                <input type="date" id="f-registrace_konec-date" class="form-control">
+                <input type="time" id="f-registrace_konec-time" class="form-control" style="max-width:110px;">
+              </div>
+            </div>
             <div class="form-group"><label class="form-label">Cena (jednorázovka)</label><input id="f-cena" class="form-control"></div>
             <div class="form-group"><label class="form-label">Záloha</label><input id="f-zaloha" class="form-control"></div>
             <div class="form-group"><label class="form-label">Doplatek</label><input id="f-doplatek" class="form-control"></div>
@@ -166,14 +184,43 @@
     let editingEventId = null;
 
     const EDITABLE_FIELD_IDS = [
-      'nazev', 'popis', 'datum od', 'datum_do', 'místo', 'lokalita_presna', 'registrace_konec',
+      'nazev', 'popis', 'místo', 'lokalita_presna',
       'cena', 'jednorazova', 'zaloha', 'doplatek', 'ucet', 'IBAN', 'discord_role_required',
     ];
+
+    // Datum/čas (2026-08-24, na žádost - "chytřejší pole než jen obyčejný textový") -
+    // datum + čas přes nativní pickery, ale ULOŽÍ se ve stejném formátu "D.M.RRRR[ H:MM]",
+    // jaký už dnes používá zbytek webu (parseCzechDate v akce.html, formatDateRange v
+    // detail-akce.html) - žádná migrace formátu napříč projektem, jen hezčí vstup tady.
+    const DATE_TIME_FIELDS = ['datum od', 'datum_do', 'registrace_konec'];
+
+    function czechDateTimeToInputs(str) {
+      const s = (str || '').toString().trim();
+      if (!s) return { date: '', time: '' };
+      const [datePart, timePart] = s.split(' ');
+      const dp = datePart.split('.');
+      if (dp.length < 3) return { date: '', time: '' };
+      const [d, m, y] = dp;
+      if (!d || !m || !y) return { date: '', time: '' };
+      return { date: y.padStart(4, '0') + '-' + m.padStart(2, '0') + '-' + d.padStart(2, '0'), time: timePart || '' };
+    }
+
+    function inputsToCzechDateTime(dateVal, timeVal) {
+      if (!dateVal) return '';
+      const [y, m, d] = dateVal.split('-');
+      const base = parseInt(d, 10) + '.' + parseInt(m, 10) + '.' + y;
+      return timeVal ? base + ' ' + timeVal : base;
+    }
 
     function fillForm(event) {
       EDITABLE_FIELD_IDS.forEach(name => {
         const el = document.getElementById('f-' + name);
         if (el) el.value = (event && event[name]) || (name === 'jednorazova' ? 'ne' : '');
+      });
+      DATE_TIME_FIELDS.forEach(name => {
+        const { date, time } = czechDateTimeToInputs(event && event[name]);
+        document.getElementById('f-' + name + '-date').value = date;
+        document.getElementById('f-' + name + '-time').value = time;
       });
     }
 
@@ -182,6 +229,11 @@
       EDITABLE_FIELD_IDS.forEach(name => {
         const el = document.getElementById('f-' + name);
         if (el) out[name] = el.value;
+      });
+      DATE_TIME_FIELDS.forEach(name => {
+        const dateVal = document.getElementById('f-' + name + '-date').value;
+        const timeVal = document.getElementById('f-' + name + '-time').value;
+        out[name] = inputsToCzechDateTime(dateVal, timeVal);
       });
       return out;
     }
@@ -271,6 +323,12 @@
     // člen stačí), C review vyžaduje Kinkster.
     const DEFAULT_ROLE_BY_TYPE = { A: '', B: 'Čekatel, OOO člen', C: 'Kinkster' };
 
+    // Účet/IBAN jsou dnes napříč akcemi vždy stejné (2026-08-24, na žádost - "ať
+    // neuděláme chybu") - předvyplní se, admin je může přepsat, kdyby se to jednou
+    // opravdu mělo lišit.
+    const DEFAULT_UCET = '2003263980/2010';
+    const DEFAULT_IBAN = 'CZ3220100000002003263980';
+
     function openFormForNewEvent(typAkce, rok) {
       editingEventId = null;
       pendingNewEvent = { typ_akce: typAkce, rok };
@@ -278,6 +336,8 @@
       document.getElementById('event-form-id-badge').textContent = 'event_id se vygeneruje při prvním uložení.';
       fillForm({});
       document.getElementById('f-discord_role_required').value = DEFAULT_ROLE_BY_TYPE[typAkce] || '';
+      document.getElementById('f-ucet').value = DEFAULT_UCET;
+      document.getElementById('f-IBAN').value = DEFAULT_IBAN;
       resetPhotoInputs(null);
       document.getElementById('event-form-card').classList.remove('hidden');
       document.getElementById('event-form-msg').textContent = '';
@@ -306,6 +366,7 @@
           <div class="admin-event-actions">
             <button class="btn btn-outline btn-sm" data-action="edit" data-event="${e.event_id}">Upravit</button>
             <button class="btn btn-outline btn-sm" data-action="registrations" data-event="${e.event_id}">Přihlášky</button>
+            <button class="btn btn-outline btn-sm" data-action="delete" data-event="${e.event_id}" data-nazev="${(e.nazev || e.event_id).replace(/"/g, '&quot;')}" style="margin-left:auto; color:#b42318; border-color:#b42318;">Zrušit akci</button>
           </div>
         </div>
       `).join('');
@@ -315,6 +376,24 @@
       }));
       container.querySelectorAll('[data-action="registrations"]').forEach(btn => btn.addEventListener('click', () => {
         loadRegistrations(btn.dataset.event);
+      }));
+      // Zrušení akce (2026-08-24, na žádost) - potvrzovací okno je jediná ochrana proti
+      // omylu, akce se pak trvale smaže z listu Akce (existující přihlášky/dotazníkové
+      // odpovědi zůstávají, jejich řešení je ruční, stejně jako doteď).
+      container.querySelectorAll('[data-action="delete"]').forEach(btn => btn.addEventListener('click', () => {
+        const eventId = btn.dataset.event;
+        const nazev = btn.dataset.nazev;
+        if (!confirm(`Opravdu trvale zrušit akci "${nazev}" (${eventId})? Tohle nejde vzít zpět. Existující přihlášky se nesmažou, jen zůstanou bez akce - je potřeba je vyřešit ručně.`)) return;
+        fetch(API_BASE + '/api/panel-delete-event', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identityPayload(), event_id: eventId }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (!data.ok) { alert('Chyba: ' + (data.error || 'neznámá')); return; }
+            loadEvents();
+          })
+          .catch(err => alert('Chyba: ' + err.message));
       }));
     }
 
