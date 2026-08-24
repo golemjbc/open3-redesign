@@ -688,8 +688,13 @@ p { margin: 0 0 16px; color: var(--text-muted); }
   /* Kulaté ořezávalo obličej/rohy fotky (2026-08-24, oprava na žádost) - čtvercový rámeček
      s object-fit:contain zobrazí celou fotku beze ztráty, i za cenu prázdného okraje. */
   width: 88px; height: 88px; border-radius: var(--radius-sm); object-fit: contain; flex-shrink: 0;
-  background: var(--bg-alt); border: 1px solid var(--border);
+  background: var(--bg-alt); border: 1px solid var(--border); cursor: zoom-in;
 }
+.member-photo-lightbox {
+  position: fixed; inset: 0; background: rgba(10, 16, 69, 0.85); z-index: 1100;
+  display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out;
+}
+.member-photo-lightbox img { max-width: 100%; max-height: 100%; border-radius: var(--radius); box-shadow: var(--shadow-lg); }
 .member-modal-photo-empty { border: 1px dashed var(--border); }
 .member-modal-contact { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
 .member-modal h4 { margin: 20px 0 8px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }

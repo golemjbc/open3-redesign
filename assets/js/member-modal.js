@@ -53,6 +53,20 @@ function closeMemberModal() {
   if (overlay) overlay.classList.add('hidden');
 }
 
+// Klik na fotku ji zvětší přes celé okno, další klik zavře (2026-08-24, na žádost).
+function toggleMemberPhotoLightbox(src) {
+  const existing = document.getElementById('member-photo-lightbox');
+  if (existing) { existing.remove(); return; }
+  const lightbox = document.createElement('div');
+  lightbox.id = 'member-photo-lightbox';
+  lightbox.className = 'member-photo-lightbox';
+  const img = document.createElement('img');
+  img.src = src;
+  lightbox.appendChild(img);
+  lightbox.addEventListener('click', () => lightbox.remove());
+  document.body.appendChild(lightbox);
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
@@ -98,8 +112,14 @@ async function openMemberModal(oooId, discordId) {
 }
 
 function renderMemberModal(body, data) {
-  const photoUrl = data.questionnaire.exists && data.questionnaire.foto_url.length
-    ? memberModalImageUrl(data.questionnaire.foto_url[0]) : null;
+  // Fotka se dřív zobrazovala přímým odkazem na Disk - fungovalo to jen tomu, kdo byl v
+  // prohlížeči zrovna přihlášený Google účtem se sdíleným přístupem (na žádost uživatele
+  // 2026-08-24 - "pořád nenačítá fotky" - opraveno: server ji teď stáhne sám přes vlastní
+  // servisní účet a pošle jako data URL, foto_data_url funguje vždy). Starý přímý odkaz
+  // zůstává jen jako záloha, kdyby se stažení na serveru z nějakého důvodu nepovedlo.
+  const photoUrl = data.questionnaire.exists
+    ? (data.questionnaire.foto_data_url || (data.questionnaire.foto_url.length ? memberModalImageUrl(data.questionnaire.foto_url[0]) : null))
+    : null;
 
   const accessRows = ['A', 'B', 'C'].map(typ => {
     const a = data.access[typ];
@@ -117,6 +137,7 @@ function renderMemberModal(body, data) {
   if (data.questionnaire.exists) {
     const q = data.questionnaire;
     const field = (label, val) => val ? `<div class="member-q-field"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(val)}</div>` : '';
+    const stavLabel = { approved: 'Schváleno', rejected: 'Zamítnuto', pending: 'Čeká na rozhodnutí' }[q.souhlas_status] || q.souhlas_status;
     questionnaireHtml = `
       <div class="member-q-fields">
         ${field('Přezdívka v dotazníku', q.jmeno_prezdivka)}
@@ -128,8 +149,9 @@ function renderMemberModal(body, data) {
         ${field('Co může nabídnout', q.co_nabidnout)}
         ${field('Sny a přání', q.sny_prani)}
         ${q.zna_patrony.length ? field('Zná patrony', q.zna_patrony.join(', ')) : ''}
-        ${field('Přiřazený patron', q.patron_kdo_historicky)}
-        ${q.locked ? field('Schválil/a', q.schvalil_patron) : ''}
+        ${q.locked ? field('Stav rozhodnutí', stavLabel) : ''}
+        ${q.souhlas_status === 'approved' ? field('Schválil/a', q.schvalil_patron) : ''}
+        ${(q.souhlas_status === 'pending' && q.souhlas) ? field('Starý nejasný zápis souhlasu', q.souhlas) : ''}
       </div>
     `;
     // Poznámky patrona (proběhl kontakt, osobní setkání, volný text) - dřív se psaly jen
@@ -156,17 +178,32 @@ function renderMemberModal(body, data) {
       </div>
     `;
     if (!q.locked) {
+      // Patron už často vybraný ze starého dotazníku (2026-08-24, na žádost - "nepotřebuji
+      // nového, použij toho ze starého dotazníku") - starší záznamy mají patrona zapsaného
+      // volným textem (např. "Adam (Liberec, Praha...) IG: ..."), ne dnešním krátkým
+      // formátem, takže se nedá porovnávat s CANONICAL_PATRONS. Pokud už nějaký je zapsaný
+      // (v jakémkoliv tvaru), zobrazí se rovnou jako hotová věc - výběr nového je schovaný
+      // za "Změnit", ne vnucený jako výchozí krok.
+      const hasExistingPatron = !!(q.patron_kdo_historicky || '').trim();
       questionnaireHtml += `
         <div class="member-patron-actions">
-          <label>Přiřadit patrona:
-            <select id="member-patron-select">
-              <option value="">— vyber —</option>
-              ${CANONICAL_PATRONS.map(p => `<option value="${escapeHtml(p)}" ${q.patron_kdo_historicky === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
-            </select>
-          </label>
-          <div class="member-patron-buttons">
+          ${hasExistingPatron ? `
+            <div>Patron: <strong>${escapeHtml(q.patron_kdo_historicky)}</strong>
+              <button type="button" class="member-link" id="member-change-patron-toggle" style="margin-left:8px;">Změnit</button>
+            </div>
+          ` : ''}
+          <div id="member-patron-picker" class="${hasExistingPatron ? 'hidden' : ''}">
+            <label>Přiřadit patrona:
+              <select id="member-patron-select">
+                <option value="">— vyber —</option>
+                ${CANONICAL_PATRONS.map(p => `<option value="${escapeHtml(p)}" ${q.patron_kdo_historicky === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+              </select>
+            </label>
             <button type="button" class="btn btn-outline btn-sm" id="member-assign-patron-btn">Přiřadit</button>
+          </div>
+          <div class="member-patron-buttons">
             <button type="button" class="btn btn-primary btn-sm" id="member-approve-btn">Schválit</button>
+            <button type="button" class="btn btn-outline btn-sm" id="member-reject-btn">Odmítnout</button>
           </div>
           <p class="member-modal-msg" id="member-patron-msg"></p>
         </div>
@@ -176,7 +213,7 @@ function renderMemberModal(body, data) {
 
   body.innerHTML = `
     <div class="member-modal-header">
-      ${photoUrl ? `<img src="${photoUrl}" alt="" class="member-modal-photo">` : '<div class="member-modal-photo member-modal-photo-empty"></div>'}
+      ${photoUrl ? `<img src="${photoUrl}" alt="" class="member-modal-photo" id="member-modal-photo-el" title="Klikni pro zvětšení">` : '<div class="member-modal-photo member-modal-photo-empty"></div>'}
       <div>
         <h3>${escapeHtml(data.jmeno || data.ooo_id)}</h3>
         <p class="member-modal-contact">
@@ -192,8 +229,19 @@ function renderMemberModal(body, data) {
     ${questionnaireHtml}
   `;
 
+  const photoEl = document.getElementById('member-modal-photo-el');
+  if (photoEl) photoEl.addEventListener('click', () => toggleMemberPhotoLightbox(photoEl.src));
+
+  const changePatronToggle = document.getElementById('member-change-patron-toggle');
+  if (changePatronToggle) {
+    changePatronToggle.addEventListener('click', () => {
+      document.getElementById('member-patron-picker').classList.toggle('hidden');
+    });
+  }
+
   const assignBtn = document.getElementById('member-assign-patron-btn');
   const approveBtn = document.getElementById('member-approve-btn');
+  const rejectBtn = document.getElementById('member-reject-btn');
   const msgEl = document.getElementById('member-patron-msg');
   if (assignBtn) {
     assignBtn.addEventListener('click', async () => {
@@ -228,6 +276,24 @@ function renderMemberModal(body, data) {
         const resData = await res.json();
         if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se schválit.'; return; }
         msgEl.textContent = 'Schváleno.';
+        openMemberModal(data.ooo_id, data.discord_id);
+      } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
+    });
+  }
+  if (rejectBtn) {
+    rejectBtn.addEventListener('click', async () => {
+      if (!confirm(`Opravdu zamítnout dotazník uživatele ${data.jmeno || data.ooo_id}?`)) return;
+      msgEl.textContent = 'Ukládám…';
+      const identity = memberModalIdentityPayload();
+      try {
+        const res = await fetch(API_BASE + '/api/panel-review-questionnaire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identity, ooo_id: data.ooo_id, action: 'reject' }),
+        });
+        const resData = await res.json();
+        if (!res.ok || !resData.ok) { msgEl.textContent = resData.error || 'Nepodařilo se zamítnout.'; return; }
+        msgEl.textContent = 'Zamítnuto.';
         openMemberModal(data.ooo_id, data.discord_id);
       } catch (err) { msgEl.textContent = 'Chyba: ' + err.message; }
     });
