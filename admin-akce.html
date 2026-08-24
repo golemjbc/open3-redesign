@@ -99,7 +99,11 @@
             </div>
             <div class="form-group"><label class="form-label">Účet</label><input id="f-ucet" class="form-control"></div>
             <div class="form-group"><label class="form-label">IBAN</label><input id="f-IBAN" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Vyžadovaná Discord role (přesný název sloupce)</label><input id="f-discord_role_required" class="form-control"></div>
+            <div class="form-group">
+              <label class="form-label">Vyžadovaná Discord role (přesný název sloupce)</label>
+              <input id="f-discord_role_required" class="form-control">
+              <p class="form-hint">Předvyplní se podle typu akce. Víc rolí odděl čárkou - stačí, když má člověk aspoň jednu z nich.</p>
+            </div>
           </div>
           <div class="form-group" style="margin-top:16px;">
             <label class="form-label">Popis (nové řádky se uloží jako zalomení)</label>
@@ -261,12 +265,19 @@
     // poloprázdný přízrak akce).
     let pendingNewEvent = null;
 
+    // Výchozí role podle typu akce (2026-08-24, na žádost) - jen předvyplnění, admin ho
+    // může v poli dál upravit. Odpovídá tomu, jak dnes roli vyhodnocuje kód (register-
+    // event-google, my-registration...): A veřejná bez role, B členská (Čekatel NEBO OOO
+    // člen stačí), C review vyžaduje Kinkster.
+    const DEFAULT_ROLE_BY_TYPE = { A: '', B: 'Čekatel, OOO člen', C: 'Kinkster' };
+
     function openFormForNewEvent(typAkce, rok) {
       editingEventId = null;
       pendingNewEvent = { typ_akce: typAkce, rok };
       document.getElementById('event-form-title').textContent = 'Nová akce (typ ' + typAkce + ', rok ' + rok + ')';
       document.getElementById('event-form-id-badge').textContent = 'event_id se vygeneruje při prvním uložení.';
       fillForm({});
+      document.getElementById('f-discord_role_required').value = DEFAULT_ROLE_BY_TYPE[typAkce] || '';
       resetPhotoInputs(null);
       document.getElementById('event-form-card').classList.remove('hidden');
       document.getElementById('event-form-msg').textContent = '';
