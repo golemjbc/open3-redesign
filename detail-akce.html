@@ -132,12 +132,12 @@
         }
         const requiredRoles = event.discord_role_required || '';
         const isPublicEvent = event.typ_akce === 'A';
-        // Typ B/C přes Google (2026-08-24, typ C doplněno Fáze 5): stejná výjimka jako
-        // v akce.html - Google uživatel bez role musí na detail vůbec vidět, jinak se
+        // Typ B (Google) i typ C (Google i Discord, 2026-08-24) - stejná výjimka jako v
+        // akce.html, viz komentář tam. Bez role musí na detail vůbec vidět, jinak se
         // nikdy nedostane k registraci/formuláři, co ho k roli teprve navede.
         const isGoogleUser = !!(loggedUser && (loggedUser.provider === 'google' || /^google_/.test(loggedUser.userId || '')));
-        const isMemberEventViaGoogle = (event.typ_akce === 'B' || event.typ_akce === 'C') && isGoogleUser;
-        const hasAccess = isLoggedIn && (isPublicEvent || isMemberEventViaGoogle || userHasRequiredRole(requiredRoles, myRoles));
+        const canBypassRoleCheck = (event.typ_akce === 'B' && isGoogleUser) || event.typ_akce === 'C';
+        const hasAccess = isLoggedIn && (isPublicEvent || canBypassRoleCheck || userHasRequiredRole(requiredRoles, myRoles));
 
         if (!hasAccess) {
           pageBody.innerHTML = `
@@ -241,6 +241,21 @@
                 // platby, viz submit handler a checkAlreadyRegistered níž.
                 const isSupportedByGoogle = isPublicEvent || event.typ_akce === 'B' || event.typ_akce === 'C';
 
+                // Discord uživatel bez role na typ C (2026-08-24, na výslovnou žádost -
+                // "chovat se logicky podobně jako Google"): dřív tu byla mezera - hasAccess
+                // nahoře ho pustí dál (viz canBypassRoleCheck), ale bez tohohle by spadl do
+                // nativního Discord formuláře (register-event), co dotazníkový flow vůbec
+                // nezná. Použije stejný "univerzální" formulář jako Google, jen s Discord
+                // identitou místo credential - viz identityPayload() v submit handleru.
+                const isDiscordUser = !!currentUser && !isGoogleUser;
+                let hasRoleForCurrentUser = true;
+                if (isDiscordUser && event.typ_akce === 'C') {
+                  const me = members.find(m => m.user_id === currentUser.userId);
+                  const myRolesHere = (me && me.roles) || {};
+                  hasRoleForCurrentUser = userHasRequiredRole(event.discord_role_required || '', myRolesHere);
+                }
+                const usesUnifiedForm = (isGoogleUser && isSupportedByGoogle) || (isDiscordUser && event.typ_akce === 'C' && !hasRoleForCurrentUser);
+
                 if (isGoogleUser && !isSupportedByGoogle) {
                   return `
                     <div id="registration-block" class="status-panel info">
@@ -249,7 +264,7 @@
                     </div>`;
                 }
 
-                if (isGoogleUser && isSupportedByGoogle) {
+                if (usesUnifiedForm) {
                   return `
                     <div id="registration-block">
                       <h3>Přihláška na akci</h3>
@@ -605,7 +620,16 @@
         const confirm18 = document.getElementById('confirm18');
         const confirmRules = document.getElementById('confirmRules');
         const submitBtn = document.getElementById('submitGoogleReg');
-        const storedCredential = (getLoggedUser() || {}).credential || null;
+        // Tenhle formulář teď slouží i Discord uživatelům bez role na typ C (2026-08-24,
+        // na výslovnou žádost) - identita se pozná podle provider a posílá se pod
+        // odpovídajícím jménem pole (my-registrations čeká `user_id`, register-event-
+        // google čeká `discord_user_id` - dva různé, staré/nové konvence, nesjednocovat
+        // silou na jednu, ať se to nesplete).
+        const loggedUserForForm = getLoggedUser();
+        const isGoogleUserForForm = !!(loggedUserForForm && (loggedUserForForm.provider === 'google' || /^google_/.test(loggedUserForForm.userId || '')));
+        const storedCredential = isGoogleUserForForm ? (loggedUserForForm.credential || null) : null;
+        const discordUserIdForForm = (loggedUserForForm && !isGoogleUserForForm) ? loggedUserForForm.userId : null;
+        const hasIdentityForForm = !!(storedCredential || discordUserIdForForm);
 
         function updateGoogleSubmitState() {
           submitBtn.disabled = !(confirm18.checked && confirmRules.checked);
@@ -628,11 +652,14 @@
           }
         });
 
-        if (storedCredential) {
+        if (hasIdentityForForm) {
           fetch(API_BASE + '/api/my-registrations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: storedCredential, eventId: event.event_id }),
+            body: JSON.stringify({
+              ...(storedCredential ? { credential: storedCredential } : { user_id: discordUserIdForForm }),
+              eventId: event.event_id,
+            }),
           })
             .then(r => r.json())
             .then(data => {
@@ -657,12 +684,12 @@
               if (!list.length) return;
               renderRegistrationStatus(list[0], list[0].ooo_id, (profile && (profile.google_name || profile.google_email)) || '', 'ooo_id');
             })
-            .catch(err => console.error('Google my-registrations error:', err));
+            .catch(err => console.error('Google/Discord my-registrations error:', err));
         }
 
         googleForm.addEventListener('submit', function (e) {
           e.preventDefault();
-          if (!storedCredential) {
+          if (!hasIdentityForForm) {
             alert('Přihlášení už vypršelo, přihlas se prosím znovu přes tlačítko v hlavičce.');
             return;
           }
@@ -679,7 +706,8 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              credential: storedCredential, event_id: event.event_id,
+              ...(storedCredential ? { credential: storedCredential } : { discord_user_id: discordUserIdForForm }),
+              event_id: event.event_id,
               typ_ucasti: typUcastiG, preference: selectedPrefs,
               telefon: telefonVal, instagram: instagramVal,
             }),
