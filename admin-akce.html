@@ -23,6 +23,24 @@
     .admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .admin-form-grid .form-group { margin-bottom: 0; }
     .hidden { display: none !important; }
+    /* Datum + čas (2026-08-24, oprava - dřív se dvě nativní pole mačkala vedle sebe do
+       jednoho úzkého sloupce, na některých prohlížečích/šířkách se to překrývalo).
+       flex-wrap: wrap - když se nevejdou vedle sebe, čas spadne na vlastní řádek pod
+       datum, místo aby se oba mačkaly nebo přesahovaly. */
+    .datetime-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .datetime-row input[type="date"] { flex: 1 1 130px; min-width: 130px; padding-left: 8px; padding-right: 4px; }
+    .datetime-row input[type="time"] { flex: 1 1 85px; min-width: 85px; max-width: 110px; padding-left: 8px; padding-right: 4px; }
+    /* Částky (2026-08-24, oprava - "zbytečně velký, mohly by mít formátování jako
+       peníze") - užší pole s "Kč" napevno vedle, ať vypadá jako částka, ne jako
+       libovolný dlouhý text. */
+    .amount-field { position: relative; max-width: 160px; }
+    .amount-field input { padding-right: 40px; }
+    .amount-field .amount-suffix {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
+    }
+    /* Sticky hlavička jinak při scrollIntoView zakryje horní část formuláře. */
+    #event-form-card { scroll-margin-top: calc(var(--header-h) + 16px); }
   </style>
 </head>
 <body>
@@ -89,28 +107,28 @@
             <div class="form-group"><label class="form-label">Lokalita (přesná adresa, po platbě)</label><input id="f-lokalita_presna" class="form-control"></div>
             <div class="form-group">
               <label class="form-label">Datum od</label>
-              <div style="display:flex; gap:8px;">
+              <div class="datetime-row">
                 <input type="date" id="f-datum od-date" class="form-control">
-                <input type="time" id="f-datum od-time" class="form-control" style="max-width:110px;">
+                <input type="time" id="f-datum od-time" class="form-control">
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Datum do</label>
-              <div style="display:flex; gap:8px;">
+              <div class="datetime-row">
                 <input type="date" id="f-datum_do-date" class="form-control">
-                <input type="time" id="f-datum_do-time" class="form-control" style="max-width:110px;">
+                <input type="time" id="f-datum_do-time" class="form-control">
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Konec registrace</label>
-              <div style="display:flex; gap:8px;">
+              <div class="datetime-row">
                 <input type="date" id="f-registrace_konec-date" class="form-control">
-                <input type="time" id="f-registrace_konec-time" class="form-control" style="max-width:110px;">
+                <input type="time" id="f-registrace_konec-time" class="form-control">
               </div>
             </div>
-            <div class="form-group"><label class="form-label">Cena (jednorázovka)</label><input id="f-cena" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Záloha</label><input id="f-zaloha" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Doplatek</label><input id="f-doplatek" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Cena (jednorázovka)</label><div class="amount-field"><input id="f-cena" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
+            <div class="form-group"><label class="form-label">Záloha</label><div class="amount-field"><input id="f-zaloha" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
+            <div class="form-group"><label class="form-label">Doplatek</label><div class="amount-field"><input id="f-doplatek" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
             <div class="form-group">
               <label class="form-label">Jednorázová platba?</label>
               <select id="f-jednorazova" class="form-control"><option value="ne">Ne (záloha + doplatek)</option><option value="ano">Ano (jedna platba)</option></select>
