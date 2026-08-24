@@ -168,18 +168,27 @@
       return out;
     }
 
-    function openFormForNewEvent(created) {
+    // Nová akce se do Sheetu NEZAPISUJE hned po kliknutí na "Založit" - jen se otevře
+    // prázdný formulář a typ/rok se pamatují lokálně (pendingNewEvent). Řádek v Akce
+    // vznikne až při prvním skutečném "Uložit" (2026-08-24, oprava - dřív vznikl řádek
+    // hned a tlačítko "Zrušit" ho nikdy nesmazalo, takže po rozmyšlení zůstal v tabulce
+    // poloprázdný přízrak akce).
+    let pendingNewEvent = null;
+
+    function openFormForNewEvent(typAkce, rok) {
       editingEventId = null;
-      document.getElementById('event-form-title').textContent = 'Nová akce — ' + created.event_id;
-      document.getElementById('event-form-id-badge').textContent = 'event_id: ' + created.event_id + ' (číslo_akce: ' + created.cislo_akce + ')';
+      pendingNewEvent = { typ_akce: typAkce, rok };
+      document.getElementById('event-form-title').textContent = 'Nová akce (typ ' + typAkce + ', rok ' + rok + ')';
+      document.getElementById('event-form-id-badge').textContent = 'event_id se vygeneruje při prvním uložení.';
       fillForm({});
-      editingEventId = created.event_id;
       document.getElementById('event-form-card').classList.remove('hidden');
       document.getElementById('event-form-msg').textContent = '';
+      document.getElementById('event-form-card').scrollIntoView({ behavior: 'smooth' });
     }
 
     function openFormForEdit(event) {
       editingEventId = event.event_id;
+      pendingNewEvent = null;
       document.getElementById('event-form-title').textContent = 'Úprava — ' + event.nazev;
       document.getElementById('event-form-id-badge').textContent = 'event_id: ' + event.event_id + ' (typ ' + event.typ_akce + ', needitovatelné)';
       fillForm(event);
@@ -294,33 +303,33 @@
     document.getElementById('btn-new-event').addEventListener('click', () => {
       const typ_akce = document.getElementById('new-typ-akce').value;
       const rok = document.getElementById('new-rok').value.trim();
-      fetch(API_BASE + '/api/panel-save-event', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...identityPayload(), typ_akce, rok }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (!data.ok) { alert('Chyba: ' + (data.error || 'neznámá')); return; }
-          openFormForNewEvent(data);
-          loadEvents();
-        })
-        .catch(err => alert('Chyba: ' + err.message));
+      openFormForNewEvent(typ_akce, rok);
     });
 
     document.getElementById('btn-cancel-event').addEventListener('click', () => {
+      // Nic se nemaže - dokud se neuložilo, žádný řádek v Sheetu ani nevznikl.
       document.getElementById('event-form-card').classList.add('hidden');
       editingEventId = null;
+      pendingNewEvent = null;
     });
 
     document.getElementById('btn-save-event').addEventListener('click', () => {
-      if (!editingEventId) return;
-      const body = { ...identityPayload(), event_id: editingEventId, ...readForm() };
+      if (!editingEventId && !pendingNewEvent) return;
+      const body = editingEventId
+        ? { ...identityPayload(), event_id: editingEventId, ...readForm() }
+        : { ...identityPayload(), typ_akce: pendingNewEvent.typ_akce, rok: pendingNewEvent.rok, ...readForm() };
       fetch(API_BASE + '/api/panel-save-event', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
         .then(r => r.json())
         .then(data => {
           if (!data.ok) { document.getElementById('event-form-msg').textContent = 'Chyba: ' + (data.error || 'neznámá'); return; }
+          if (data.created) {
+            editingEventId = data.event_id;
+            pendingNewEvent = null;
+            document.getElementById('event-form-title').textContent = 'Nová akce — ' + data.event_id;
+            document.getElementById('event-form-id-badge').textContent = 'event_id: ' + data.event_id + ' (číslo_akce: ' + data.cislo_akce + ', needitovatelné)';
+          }
           document.getElementById('event-form-msg').textContent = 'Uloženo.';
           loadEvents();
         })
