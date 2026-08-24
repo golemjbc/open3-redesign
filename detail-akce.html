@@ -421,9 +421,44 @@
         const url = ctaUrl || 'https://discord.gg/qYCAubmDQc';
         showPanel('registration-info', `
           <h4 style="margin-top:0;">Ještě jeden krok</h4>
-          <p>Tvoje přihláška je přijatá. Tahle akce vyžaduje roli na Discordu (dokončit uvítací proces/pravidla serveru) — poslali jsme ti e-mail se stejným tlačítkem.</p>
+          <p>Tvoje přihláška je přijatá. Tahle akce vyžaduje roli na Discordu (dokončit uvítací proces/pravidla serveru) — poslali jsme ti e-mail se stejným tlačítkem. Jakmile roli dostaneš, stránka se sama obnoví (bot roli synchronizuje do pár minut).</p>
           <a href="${url}" target="_blank" class="btn btn-primary">Propojit a otevřít Discord</a>
         `);
+        startDiscordRolePoll();
+      }
+
+      // Automatické obnovení stránky, jakmile role dorazí (2026-08-24, na žádost po
+      // živém testu - "stránka by se měla sama po napárování aktualizovat"). Bot
+      // synchronizuje role z Discordu do Sheetu ve 3minutovém cyklu, takže se čeká -
+      // polling po 10s je dost časté na to, aby to nepůsobilo rozbitě, a dost řídké,
+      // aby to nezatěžovalo API. Zastaví se samo po ~10 minutách (60 pokusů), ať
+      // nezůstane běžet do nekonečna, když člověk kartu jen nechá otevřenou.
+      let discordRolePollTimer = null;
+      let discordRolePollAttempts = 0;
+      function startDiscordRolePoll() {
+        if (discordRolePollTimer) return;
+        const credential = (getLoggedUser() || {}).credential;
+        if (!credential) return;
+        discordRolePollAttempts = 0;
+        discordRolePollTimer = setInterval(() => {
+          discordRolePollAttempts++;
+          if (discordRolePollAttempts > 60) { clearInterval(discordRolePollTimer); return; }
+          fetch(API_BASE + '/api/my-registrations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential, eventId: event.event_id }),
+          })
+            .then(r => r.json())
+            .then(data => {
+              const list = Array.isArray(data) ? data : (data && data.registrations) || [];
+              const found = list.find(item => item.event_id === event.event_id);
+              if (found && !found.needs_discord_role) {
+                clearInterval(discordRolePollTimer);
+                location.reload();
+              }
+            })
+            .catch(err => console.error('Discord role poll error:', err));
+        }, 10000);
       }
 
       function loadPaymentInfo(userId, userName, typUcasti, paymentType, idParam) {
