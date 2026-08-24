@@ -422,7 +422,11 @@
         .then(data => {
           if (!data.ok) throw new Error(data.error || 'Chyba při načítání přihlášek.');
           const card = document.getElementById('registrations-card');
-          document.getElementById('registrations-title').textContent = 'Přihlášky — ' + eventId;
+          // Jen event_id v titulku byl na žádost doplněn i o jméno akce (2026-08-24) -
+          // ať je hned vidět, o kterou akci jde, ne jen její kód.
+          const eventMeta = allEvents.find(e => e.event_id === eventId);
+          const eventLabel = eventMeta ? `${eventMeta.nazev} (${eventId})` : eventId;
+          document.getElementById('registrations-title').textContent = 'Přihlášky — ' + eventLabel;
           const body = document.getElementById('registrations-body');
           if (!data.registrations.length) {
             body.innerHTML = '<p class="form-hint">Zatím nikdo přihlášený.</p>';
