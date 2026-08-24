@@ -168,6 +168,10 @@
         </div>
 
         <h2 style="margin-top:40px;">Existující akce</h2>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:0.9rem; cursor:pointer;">
+          <input type="checkbox" id="include-archived-toggle">
+          Zobrazit i proběhlé akce
+        </label>
         <div id="events-list"></div>
 
         <div id="registrations-card" class="admin-event-card hidden">
@@ -347,15 +351,43 @@
     const DEFAULT_UCET = '2003263980/2010';
     const DEFAULT_IBAN = 'CZ3220100000002003263980';
 
+    // Kopírování akce (2026-08-24, na žádost - "abych mohl snadno podobné akce
+    // kopírovat") - zdroj se jen zapamatuje, samotné vytvoření pořád vyžaduje čerstvý
+    // výběr typu+roku (btn-new-event dole) - event_id musí být vždycky nový, nikdy se
+    // needituje zdrojová akce. Fotky se úmyslně NEKOPÍRUJÍ (nová instance dostane
+    // vlastní), stejně tak data/čas (kopie je "podobná akce", ne totéž datum znovu).
+    let pendingCopySource = null;
+
+    function openFormForCopy(event) {
+      pendingCopySource = event;
+      document.getElementById('event-form-msg').textContent = '';
+      document.getElementById('new-typ-akce').value = event.typ_akce;
+      document.querySelector('.admin-event-card').scrollIntoView({ behavior: 'smooth' });
+      alert(`Kopíruju "${event.nazev}" - vyber prosím rok konání nové akce a klikni na "Založit akci a otevřít formulář". Formulář se předvyplní podle zdrojové akce (bez fotek a bez data - to nastav nové).`);
+    }
+
     function openFormForNewEvent(typAkce, rok) {
       editingEventId = null;
       pendingNewEvent = { typ_akce: typAkce, rok };
       document.getElementById('event-form-title').textContent = 'Nová akce (typ ' + typAkce + ', rok ' + rok + ')';
       document.getElementById('event-form-id-badge').textContent = 'event_id se vygeneruje při prvním uložení.';
-      fillForm({});
-      document.getElementById('f-discord_role_required').value = DEFAULT_ROLE_BY_TYPE[typAkce] || '';
-      document.getElementById('f-ucet').value = DEFAULT_UCET;
-      document.getElementById('f-IBAN').value = DEFAULT_IBAN;
+      const source = pendingCopySource;
+      pendingCopySource = null;
+      fillForm(source || {});
+      if (source) {
+        // Datum se u kopie záměrně nepřenáší - je to "podobná akce", ne totéž datum znovu.
+        DATE_TIME_FIELDS.forEach(name => {
+          document.getElementById('f-' + name + '-date').value = '';
+          document.getElementById('f-' + name + '-time').value = '';
+        });
+      }
+      document.getElementById('f-discord_role_required').value = (source && source.discord_role_required) || DEFAULT_ROLE_BY_TYPE[typAkce] || '';
+      document.getElementById('f-ucet').value = (source && source.ucet) || DEFAULT_UCET;
+      document.getElementById('f-IBAN').value = (source && source.IBAN) || DEFAULT_IBAN;
+      if (source) {
+        document.getElementById('f-nazev').value = (source.nazev || '') + ' (kopie)';
+        document.getElementById('event-form-title').textContent = 'Kopie akce "' + source.nazev + '" (typ ' + typAkce + ', rok ' + rok + ')';
+      }
       resetPhotoInputs(null);
       document.getElementById('event-form-card').classList.remove('hidden');
       document.getElementById('event-form-msg').textContent = '';
@@ -377,13 +409,18 @@
     function renderEvents() {
       const container = document.getElementById('events-list');
       if (!allEvents.length) { container.innerHTML = '<p class="form-hint">Zatím žádné akce.</p>'; return; }
+      // is_past (2026-08-24, sloučení Akce+Archiv) - proběhlé akce se jen vizuálně
+      // odliší (tlumenější karta + štítek), ne skryjí úplně - vidí je jen ten, kdo
+      // zaškrtl "Zobrazit i proběhlé akce" (checkbox už poslal include_archived, takže
+      // co je v allEvents, to se má zobrazit).
       container.innerHTML = allEvents.map(e => `
-        <div class="admin-event-card">
-          <h3>${e.nazev || e.event_id}</h3>
+        <div class="admin-event-card" style="${e.is_past ? 'opacity:0.6;' : ''}">
+          <h3>${e.nazev || e.event_id}${e.is_past ? ' <span class="form-hint" style="font-weight:400;">(proběhlo)</span>' : ''}</h3>
           <div class="admin-event-meta">${e.event_id} · typ ${e.typ_akce} · ${e.registrations_count} přihlášek (záloha OK: ${e.deposit_ok_count}, doplatek OK: ${e.doplatek_ok_count})</div>
           <div class="admin-event-actions">
             <button class="btn btn-outline btn-sm" data-action="edit" data-event="${e.event_id}">Upravit</button>
             <button class="btn btn-outline btn-sm" data-action="registrations" data-event="${e.event_id}">Přihlášky</button>
+            <button class="btn btn-outline btn-sm" data-action="copy" data-event="${e.event_id}">Kopírovat jako novou akci</button>
             <button class="btn btn-outline btn-sm" data-action="delete" data-event="${e.event_id}" data-nazev="${(e.nazev || e.event_id).replace(/"/g, '&quot;')}" style="margin-left:auto; color:#b42318; border-color:#b42318;">Zrušit akci</button>
           </div>
         </div>
@@ -394,6 +431,10 @@
       }));
       container.querySelectorAll('[data-action="registrations"]').forEach(btn => btn.addEventListener('click', () => {
         loadRegistrations(btn.dataset.event);
+      }));
+      container.querySelectorAll('[data-action="copy"]').forEach(btn => btn.addEventListener('click', () => {
+        const event = allEvents.find(e => e.event_id === btn.dataset.event);
+        if (event) openFormForCopy(event);
       }));
       // Zrušení akce (2026-08-24, na žádost) - potvrzovací okno je jediná ochrana proti
       // omylu, akce se pak trvale smaže z listu Akce (existující přihlášky/dotazníkové
@@ -416,8 +457,10 @@
     }
 
     function loadEvents() {
+      const includeArchived = document.getElementById('include-archived-toggle').checked;
       return fetch(API_BASE + '/api/panel-list-events', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(identityPayload()),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...identityPayload(), include_archived: includeArchived }),
       })
         .then(r => r.json())
         .then(data => {
@@ -426,6 +469,10 @@
           renderEvents();
         });
     }
+
+    document.getElementById('include-archived-toggle').addEventListener('change', () => {
+      loadEvents().catch(err => alert('Chyba při načítání akcí: ' + err.message));
+    });
 
     function statusLabel(status) {
       return (status || '').toUpperCase() === 'OK' ? '<span class="status-ok">OK</span>' : `<span class="status-pending">${status || '—'}</span>`;
