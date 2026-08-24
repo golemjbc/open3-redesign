@@ -215,10 +215,14 @@ function renderMemberModal(body, data) {
       // (v jakémkoliv tvaru), zobrazí se rovnou jako hotová věc - výběr nového je schovaný
       // za "Změnit", ne vnucený jako výchozí krok.
       const hasExistingPatron = !!(q.patron_kdo_historicky || '').trim();
+      // patron_normalized (2026-08-24, na žádost - "ty řetězce nejsou stejný ale logika
+      // ano") - server dopočítá, ke kterému z dnešních 4 patronů starý volný text patří
+      // (podle toho, čí jméno v textu je), ať jde podle toho i filtrovat a předvybrat.
       questionnaireHtml += `
         <div class="member-patron-actions">
           ${hasExistingPatron ? `
             <div>Patron: <strong>${escapeHtml(q.patron_kdo_historicky)}</strong>
+              ${q.patron_normalized && q.patron_normalized !== q.patron_kdo_historicky ? ` <span class="member-modal-contact">(dnes: ${escapeHtml(q.patron_normalized)})</span>` : ''}
               <button type="button" class="member-link" id="member-change-patron-toggle" style="margin-left:8px;">Změnit</button>
             </div>
           ` : ''}
@@ -226,7 +230,7 @@ function renderMemberModal(body, data) {
             <label>Přiřadit patrona:
               <select id="member-patron-select">
                 <option value="">— vyber —</option>
-                ${CANONICAL_PATRONS.map(p => `<option value="${escapeHtml(p)}" ${q.patron_kdo_historicky === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
+                ${CANONICAL_PATRONS.map(p => `<option value="${escapeHtml(p)}" ${q.patron_normalized === p ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('')}
               </select>
             </label>
             <button type="button" class="btn btn-outline btn-sm" id="member-assign-patron-btn">Přiřadit</button>
