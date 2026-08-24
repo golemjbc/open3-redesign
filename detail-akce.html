@@ -58,6 +58,11 @@
 
   <script src="assets/js/auth.js"></script>
   <script>
+    // Po přihlášení přes hlavičku (na téhle stránce často z access-denied stavu, kdy
+    // stránka ještě nezná roli/typ přihlášení) se musí celá stránka znovu vyhodnotit -
+    // stejný vzorec jako akce.html, jinak zůstane viset na starém stavu bez obnovení.
+    window.onOooLogin = () => location.reload();
+
     const params = new URLSearchParams(window.location.search);
     const eventId = params.get('event_id');
     const pageBody = document.getElementById('page-body');
@@ -127,7 +132,12 @@
         }
         const requiredRoles = event.discord_role_required || '';
         const isPublicEvent = event.typ_akce === 'A';
-        const hasAccess = isLoggedIn && (isPublicEvent || userHasRequiredRole(requiredRoles, myRoles));
+        // Typ B přes Google (2026-08-24): stejná výjimka jako v akce.html - Google
+        // uživatel bez role musí na detail vůbec vidět, jinak se nikdy nedostane
+        // k registraci/formuláři, co ho k roli teprve navede.
+        const isGoogleUser = !!(loggedUser && (loggedUser.provider === 'google' || /^google_/.test(loggedUser.userId || '')));
+        const isMemberEventViaGoogle = event.typ_akce === 'B' && isGoogleUser;
+        const hasAccess = isLoggedIn && (isPublicEvent || isMemberEventViaGoogle || userHasRequiredRole(requiredRoles, myRoles));
 
         if (!hasAccess) {
           pageBody.innerHTML = `
