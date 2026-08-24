@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta name="referrer" content="no-referrer">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OOO Community - Otevři se. Poznej se. Propoj se.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Vstupní dotazník — OOO Community</title>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      <a class="brand" href="index.html"><img src="assets/images/OOOlogo.png" alt="OOO logo"> <span>OOO Community</span></a>
+      <nav>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="index.html">Domů</a></li>
+          <li><a href="akce.html">Akce</a></li>
+          <li><a href="pravidla.html">Pravidla</a></li>
+          <li><a href="contact.html">Kontakt</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <div id="user-info"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+        <a id="login-button" href="#" class="btn btn-primary btn-sm">Přihlásit</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container" style="max-width:640px;">
+      <span class="eyebrow">Vstupní dotazník</span>
+      <h1 id="page-heading">Pojďme se poznat</h1>
+      <p id="page-intro" class="form-hint" style="font-size:0.9rem; margin-bottom:24px;">
+        Vyplň nám prosím pár údajů, abychom věděli co a jak s tebou máme komunikovat.
+        Víc o nás se dozvíš na <a href="https://www.instagram.com/ooo.community" target="_blank">Instagramu</a>
+        nebo <a href="https://discord.gg/qYCAubmDQc" target="_blank">Discord serveru</a>.
+      </p>
+
+      <div id="gate-message" class="status-panel info hidden"></div>
+
+      <form id="questionnaire-form" class="hidden">
+        <div class="form-group">
+          <label class="form-label" for="q-jmeno">Jméno/a nebo přezdívka/y *</label>
+          <input type="text" class="form-control" id="q-jmeno" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-profily">Profily (IG / FB / FL / Amatéři)</label>
+          <input type="text" class="form-control" id="q-profily" placeholder="@tvůj_profil">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Upřesnění *</label>
+          <ul class="pref-list" id="q-upresneni-list">
+            <li><label><input type="radio" name="upresneni" value="Jednotlivec"> Jednotlivec</label></li>
+            <li><label><input type="radio" name="upresneni" value="Pár"> Pár</label></li>
+            <li><label><input type="radio" name="upresneni" value="Manželé"> Manželé</label></li>
+            <li><label><input type="radio" name="upresneni" value="Milenci"> Milenci</label></li>
+            <li><label><input type="radio" name="upresneni" value="Polyamorní vztah"> Polyamorní vztah</label></li>
+            <li>
+              <label><input type="radio" name="upresneni" value="Jiné" id="upresneni-jine-radio"> Jiné:</label>
+              <input type="text" class="form-control" id="q-upresneni-jine" style="margin-top:6px;" placeholder="upřesni">
+            </li>
+          </ul>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-demo">Obecné sociálně demografické údaje :-) *</label>
+          <div class="form-hint" style="margin:0 0 8px;">Věk, stav, lokalita, klidně i zajímavosti apod.</div>
+          <textarea class="form-control" id="q-demo" rows="3" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-situace">Stručně popiš svou aktuální situaci *</label>
+          <div class="form-hint" style="margin:0 0 8px;">Např. jsme 10 let manželé a rádi bychom objevili společně nové možnosti a částečně otevřeli vztah. Hledáme cestu k osobnímu kontaktu s podobně smýšlejícími lidmi a sdílení zkušeností / jsem sub a hledám svého pána.</div>
+          <textarea class="form-control" id="q-situace" rows="4" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-nabidnout">Máš co nabídnout komunitě?</label>
+          <div class="form-hint" style="margin:0 0 8px;">Např. jsem rigger, umím masírovat nohy, peču nejlepší buchty, chci sloužit nahý, mám 4 bradavky a rád je ukážu apod.</div>
+          <textarea class="form-control" id="q-nabidnout" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-sny">Jaké jsou tvoje sny a přání, co by sis chtěl/a zažít nebo zkusit?</label>
+          <div class="form-hint" style="margin:0 0 8px;">Inspiruj nás prosím při přípravě akcí.</div>
+          <textarea class="form-control" id="q-sny" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Který typ akcí by ses rád/a zúčastnil/a? *</label>
+          <ul class="pref-list">
+            <li><label><input type="checkbox" name="typ_akci" value="Veřejné"> Veřejné</label></li>
+            <li><label><input type="checkbox" name="typ_akci" value="Tematické"> Tematické</label></li>
+            <li><label><input type="checkbox" name="typ_akci" value="Speciální"> Speciální</label></li>
+          </ul>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="q-foto">Zde prosím přilož svou fotku *</label>
+          <input type="file" class="form-control" id="q-foto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" required>
+          <div class="form-hint">Obrázek (JPEG/PNG/WebP/HEIC), max 8 MB.</div>
+          <div id="foto-preview" class="hidden" style="margin-top:10px;">
+            <img id="foto-preview-img" src="" alt="Náhled fotky" style="max-width:180px; border-radius:12px; display:block;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-size:0.9rem;">
+            <input type="checkbox" id="q-kultura" required style="margin-top:3px;">
+            <span>Znáš, rozumíš, souhlasíš a zavazuješ se dodržovat <a href="https://www.instagram.com/ooo.community" target="_blank">kulturu Kinky Events</a>? *</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn" disabled>Odeslat dotazník</button>
+      </form>
+
+      <div id="result-panel" class="status-panel success hidden"></div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">OOO Community</div>
+        <ul class="footer-links">
+          <li><a href="mailto:info@open3.cz">info@open3.cz</a></li>
+          <li><a href="tel:+420735593621">+420 735 593 621</a></li>
+          <li><a href="https://discord.gg/qYCAubmDQc">Discord</a></li>
+          <li><a href="https://www.instagram.com/ooo.community">Instagram</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">© 2026 OOO Community z.s. — Design: Adam (redesign koncept, mimo produkci)</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+    window.onOooLogin = () => location.reload();
+
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event_id');
+
+    const gateMessage = document.getElementById('gate-message');
+    const form = document.getElementById('questionnaire-form');
+    const resultPanel = document.getElementById('result-panel');
+
+    function showGate(html) {
+      gateMessage.innerHTML = html;
+      gateMessage.classList.remove('hidden');
+      form.classList.add('hidden');
+    }
+
+    const user = getLoggedUser();
+    const isGoogleUser = !!(user && (user.provider === 'google' || /^google_/.test(user.userId || '')));
+
+    // Dotazník zatím umí jen Google cestu (submit-questionnaire ověřuje jen Google token,
+    // 2026-08-24) - Discord-only cesta (na obrazovce webu pro lidi bez Google účtu) je
+    // budoucí rozšíření, zatím nepostavené.
+    if (!user) {
+      showGate('<h4 style="margin-top:0;">Musíš se nejdřív přihlásit</h4><p style="margin-bottom:0;">Přihlas se prosím přes Google tlačítkem v hlavičce a vrať se zpátky na tuhle stránku.</p>');
+    } else if (!isGoogleUser) {
+      showGate('<h4 style="margin-top:0;">Zatím jen přes Google</h4><p style="margin-bottom:0;">Vstupní dotazník na webu teď umí zpracovat jen přihlášení přes Google. Odhlas se prosím a přihlas znovu přes Google tlačítkem v hlavičce.</p>');
+    } else {
+      form.classList.remove('hidden');
+      initForm();
+    }
+
+    function initForm() {
+      if (eventId) {
+        fetch(API_BASE + '/api/events')
+          .then(r => r.json())
+          .then(events => {
+            const event = (events || []).find(e => e.event_id === eventId);
+            if (event && event.nazev) {
+              document.getElementById('page-heading').textContent = 'Dotazník k akci: ' + event.nazev;
+            }
+          })
+          .catch(() => {});
+      }
+
+      const jineRadio = document.getElementById('upresneni-jine-radio');
+      const jineText = document.getElementById('q-upresneni-jine');
+      jineText.addEventListener('focus', () => { jineRadio.checked = true; updateSubmitState(); });
+
+      const fotoInput = document.getElementById('q-foto');
+      const fotoPreview = document.getElementById('foto-preview');
+      const fotoPreviewImg = document.getElementById('foto-preview-img');
+      let fotoDataUrl = null;
+
+      fotoInput.addEventListener('change', () => {
+        const file = fotoInput.files[0];
+        fotoDataUrl = null;
+        fotoPreview.classList.add('hidden');
+        if (!file) { updateSubmitState(); return; }
+        if (file.size > 8 * 1024 * 1024) {
+          alert('Fotka je moc velká (max 8 MB), vyber prosím menší soubor.');
+          fotoInput.value = '';
+          updateSubmitState();
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          fotoDataUrl = reader.result;
+          fotoPreviewImg.src = fotoDataUrl;
+          fotoPreview.classList.remove('hidden');
+          updateSubmitState();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const submitBtn = document.getElementById('submit-btn');
+      const jmenoInput = document.getElementById('q-jmeno');
+      const demoInput = document.getElementById('q-demo');
+      const situaceInput = document.getElementById('q-situace');
+      const kulturaInput = document.getElementById('q-kultura');
+
+      function selectedUpresneni() {
+        const checked = document.querySelector('input[name="upresneni"]:checked');
+        if (!checked) return '';
+        if (checked.value === 'Jiné') return jineText.value.trim();
+        return checked.value;
+      }
+      function selectedTypAkci() {
+        return Array.from(document.querySelectorAll('input[name="typ_akci"]:checked')).map(cb => cb.value);
+      }
+
+      function updateSubmitState() {
+        const ok = jmenoInput.value.trim()
+          && selectedUpresneni()
+          && demoInput.value.trim()
+          && situaceInput.value.trim()
+          && selectedTypAkci().length > 0
+          && fotoDataUrl
+          && kulturaInput.checked;
+        submitBtn.disabled = !ok;
+      }
+      [jmenoInput, demoInput, situaceInput, jineText].forEach(el => el.addEventListener('input', updateSubmitState));
+      document.querySelectorAll('input[name="upresneni"], input[name="typ_akci"]').forEach(el => el.addEventListener('change', updateSubmitState));
+      kulturaInput.addEventListener('change', updateSubmitState);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!eventId) { alert('Chybí event_id v odkazu, vrať se prosím na e-mail/stránku akce a zkus to znovu.'); return; }
+        const credential = (getLoggedUser() || {}).credential;
+        if (!credential) { alert('Přihlášení vypršelo, přihlas se prosím znovu přes hlavičku.'); return; }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Odesílám…';
+
+        const base64 = fotoDataUrl.split(',')[1];
+        const mimeType = fotoDataUrl.split(';')[0].replace('data:', '');
+
+        fetch(API_BASE + '/api/submit-questionnaire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            credential, event_id: eventId,
+            jmeno_prezdivka: jmenoInput.value.trim(),
+            profily: document.getElementById('q-profily').value.trim(),
+            upresneni: selectedUpresneni(),
+            socialne_demograficke: demoInput.value.trim(),
+            aktualni_situace: situaceInput.value.trim(),
+            co_nabidnout: document.getElementById('q-nabidnout').value.trim(),
+            sny_prani: document.getElementById('q-sny').value.trim(),
+            kultura_souhlas: kulturaInput.checked,
+            typ_akci: selectedTypAkci(),
+            photo: { base64, mimeType, filename: fotoInput.files[0].name },
+          }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (!data.ok) {
+              alert('Chyba při odeslání: ' + (data.error || 'neznámá chyba'));
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Odeslat dotazník';
+              return;
+            }
+            form.classList.add('hidden');
+            resultPanel.innerHTML = `
+              <h4 style="margin-top:0;">Díky za vyplnění!</h4>
+              <p style="margin-bottom:0;">Dotazník máme. Poslední krok přijde e-mailem — propojení s Discordem. Mezitím tvůj dotazník posoudí patron.</p>
+            `;
+            resultPanel.classList.remove('hidden');
+          })
+          .catch(err => {
+            console.error('Odeslání dotazníku selhalo:', err);
+            alert('Chyba při odeslání: ' + err.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Odeslat dotazník';
+          });
+      });
+    }
+  </script>
+</body>
+</html>
