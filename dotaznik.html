@@ -39,11 +39,13 @@
       <p id="page-intro" class="form-hint" style="font-size:0.9rem; margin-bottom:24px;">
         Vyplň nám prosím pár údajů, abychom věděli co a jak s tebou máme komunikovat. Dotazník je jeden
         společný pro všechny akce Kinky Events — jakmile ho jednou vyplníš, platí i pro další podobné akce,
-        nemusíš ho vyplňovat znovu. Víc o nás se dozvíš na <a href="https://www.instagram.com/ooo.community" target="_blank">Instagramu</a>
+        nemusíš ho vyplňovat znovu. Dotazník lze zpětně upravovat, dokud ho neschválí patron — po schválení
+        už úpravy nejdou. Víc o nás se dozvíš na <a href="https://www.instagram.com/ooo.community" target="_blank">Instagramu</a>
         nebo <a href="https://discord.gg/qYCAubmDQc" target="_blank">Discord serveru</a>.
       </p>
 
       <div id="gate-message" class="status-panel info hidden"></div>
+      <div id="loading-message" class="form-hint hidden">Načítám…</div>
 
       <form id="questionnaire-form" class="hidden">
         <div class="form-group">
@@ -111,8 +113,9 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="q-foto">Zde prosím přilož svou fotku (klidně víc) *</label>
-          <input type="file" class="form-control" id="q-foto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple required>
+          <label class="form-label" for="q-foto" id="q-foto-label">Zde prosím přilož svou fotku (klidně víc) *</label>
+          <div id="foto-existing" class="form-hint hidden" style="margin-bottom:8px;"></div>
+          <input type="file" class="form-control" id="q-foto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
           <div class="form-hint">Obrázky (JPEG/PNG/WebP/HEIC), max 8 MB každý, max 5 fotek.</div>
           <div id="foto-preview" class="hidden" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
@@ -151,9 +154,12 @@
     window.onOooLogin = () => location.reload();
 
     const params = new URLSearchParams(window.location.search);
+    // event_id je jen nepovinný kontext (hezčí text v e-mailu) - dotazník je univerzální
+    // napříč akcemi typu C, ne vázaný na jednu konkrétní (2026-08-24, na výslovnou žádost).
     const eventId = params.get('event_id');
 
     const gateMessage = document.getElementById('gate-message');
+    const loadingMessage = document.getElementById('loading-message');
     const form = document.getElementById('questionnaire-form');
     const resultPanel = document.getElementById('result-panel');
 
@@ -165,23 +171,53 @@
 
     const user = getLoggedUser();
     const isGoogleUser = !!(user && (user.provider === 'google' || /^google_/.test(user.userId || '')));
+    // Dva zdroje identity (2026-08-24, na výslovnou žádost - odkaz na dotazník bude i na
+    // Discordu) - Google (credential) nebo Discord (userId, stejný důvěřovaný vzorec jako
+    // zbytek appky u Discord přihlášení).
+    const isDiscordUser = !!user && !isGoogleUser;
 
-    // Dotazník zatím umí jen Google cestu (submit-questionnaire ověřuje jen Google token,
-    // 2026-08-24) - Discord-only cesta (na obrazovce webu pro lidi bez Google účtu) je
-    // budoucí rozšíření, zatím nepostavené.
+    function identityPayload() {
+      return isGoogleUser ? { credential: user.credential } : { discord_user_id: user.userId };
+    }
+
     if (!user) {
-      showGate('<h4 style="margin-top:0;">Musíš se nejdřív přihlásit</h4><p style="margin-bottom:0;">Přihlas se prosím přes Google tlačítkem v hlavičce a vrať se zpátky na tuhle stránku.</p>');
-    } else if (!isGoogleUser) {
-      showGate('<h4 style="margin-top:0;">Zatím jen přes Google</h4><p style="margin-bottom:0;">Vstupní dotazník na webu teď umí zpracovat jen přihlášení přes Google. Odhlas se prosím a přihlas znovu přes Google tlačítkem v hlavičce.</p>');
+      showGate('<h4 style="margin-top:0;">Musíš se nejdřív přihlásit</h4><p style="margin-bottom:0;">Přihlas se prosím tlačítkem v hlavičce (Google nebo Discord) a vrať se zpátky na tuhle stránku.</p>');
     } else {
-      form.classList.remove('hidden');
-      initForm();
+      loadingMessage.classList.remove('hidden');
+      fetch(API_BASE + '/api/get-questionnaire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(identityPayload()),
+      })
+        .then(r => r.json())
+        .then(data => {
+          loadingMessage.classList.add('hidden');
+          if (!data.ok) {
+            showGate('<h4 style="margin-top:0;">Něco se nepovedlo</h4><p style="margin-bottom:0;">' + (data.error || 'Zkus to prosím znovu.') + '</p>');
+            return;
+          }
+          if (data.exists && data.locked) {
+            showGate('<h4 style="margin-top:0;">Dotazník je schválený</h4><p style="margin-bottom:0;">Tvůj dotazník už schválil patron, nejde ho dál upravovat.</p>');
+            return;
+          }
+          form.classList.remove('hidden');
+          initForm(data.exists ? data.fields : null);
+        })
+        .catch(err => {
+          loadingMessage.classList.add('hidden');
+          console.error('Načtení dotazníku selhalo:', err);
+          showGate('<h4 style="margin-top:0;">Něco se nepovedlo</h4><p style="margin-bottom:0;">Zkus to prosím znovu za chvíli.</p>');
+        });
     }
 
     const MAX_PHOTOS = 5;
     const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
-    function initForm() {
+    function initForm(existingFields) {
+      const isEditing = !!existingFields;
+      if (isEditing) {
+        document.getElementById('submit-btn').textContent = 'Uložit změny';
+      }
       // Upřesnění: "Jiné" pole je mimo .pref-list schválně (ta má CSS pravidlo, co
       // zmenšuje VŠECHNY inputy uvnitř na 16×16px pro checkboxy/radia - vnořené textové
       // pole by tím bylo prakticky nepoužitelné, nalezeno živým testem 2026-08-24).
@@ -205,10 +241,24 @@
         updateSubmitState();
       }));
 
-      // Fotky: víc najednou, každá se čte zvlášť jako base64, s náhledem.
+      // Fotky: víc najednou, každá se čte zvlášť jako base64, s náhledem. Při editaci
+      // NEJSOU povinné znovu nahrávat - staré zůstanou, jen se ukážou jako odkazy
+      // (nejdou vykreslit jako <img>, složka na Disku není veřejná, jen sdílená
+      // patronům+správci).
       const fotoInput = document.getElementById('q-foto');
       const fotoPreview = document.getElementById('foto-preview');
+      const fotoExisting = document.getElementById('foto-existing');
+      const fotoLabel = document.getElementById('q-foto-label');
       let selectedPhotos = []; // [{ base64, mimeType, filename }]
+
+      if (isEditing) {
+        fotoLabel.textContent = 'Chceš fotku vyměnit? (nepovinné)';
+        if (existingFields.foto_url && existingFields.foto_url.length) {
+          fotoExisting.innerHTML = 'Aktuálně máš nahráno: ' + existingFields.foto_url
+            .map((u, i) => `<a href="${u}" target="_blank">fotka ${i + 1}</a>`).join(', ');
+          fotoExisting.classList.remove('hidden');
+        }
+      }
 
       fotoInput.addEventListener('change', () => {
         const files = Array.from(fotoInput.files || []);
@@ -272,24 +322,53 @@
       }
 
       function updateSubmitState() {
+        // Fotky povinné jen při prvním vyplnění - při editaci se dají vynechat (stare
+        // zustanou beze zmeny na backendu).
+        const photosOk = isEditing || (selectedPhotos.length > 0 && selectedPhotos.every(Boolean));
         const ok = jmenoInput.value.trim()
           && selectedUpresneni()
           && lokalitaInput.value.trim()
           && demoInput.value.trim()
           && situaceInput.value.trim()
           && selectedPatrony().length > 0
-          && selectedPhotos.length > 0 && selectedPhotos.every(Boolean)
+          && photosOk
           && gdprInput.checked;
         submitBtn.disabled = !ok;
       }
       [jmenoInput, lokalitaInput, demoInput, situaceInput, jineText].forEach(el => el.addEventListener('input', updateSubmitState));
       gdprInput.addEventListener('change', updateSubmitState);
 
+      // Předvyplnění existujícími hodnotami (návrat na stránku, editace před schválením).
+      if (isEditing) {
+        jmenoInput.value = existingFields.jmeno_prezdivka || '';
+        document.getElementById('q-profily').value = existingFields.profily || '';
+        lokalitaInput.value = existingFields.lokalita || '';
+        demoInput.value = existingFields.socialne_demograficke || '';
+        situaceInput.value = existingFields.aktualni_situace || '';
+        document.getElementById('q-nabidnout').value = existingFields.co_nabidnout || '';
+        document.getElementById('q-sny').value = existingFields.sny_prani || '';
+
+        const fixedUpresneni = ['Jednotlivec', 'Pár', 'Manželé', 'Milenci', 'Polyamorní vztah'];
+        const uVal = existingFields.upresneni || '';
+        if (uVal && !fixedUpresneni.includes(uVal)) {
+          jineRadio.checked = true;
+          jineText.value = uVal;
+          jineText.classList.remove('hidden');
+        } else if (uVal) {
+          const r = document.querySelector(`input[name="upresneni"][value="${uVal}"]`);
+          if (r) r.checked = true;
+        }
+
+        (existingFields.zna_patrony || []).forEach(p => {
+          const cb = document.querySelector(`input[name="zna_patrony"][value="${p}"]`);
+          if (cb) cb.checked = true;
+        });
+
+        updateSubmitState();
+      }
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        if (!eventId) { alert('Chybí event_id v odkazu, vrať se prosím na e-mail/stránku akce a zkus to znovu.'); return; }
-        const credential = (getLoggedUser() || {}).credential;
-        if (!credential) { alert('Přihlášení vypršelo, přihlas se prosím znovu přes hlavičku.'); return; }
 
         submitBtn.disabled = true;
         submitBtn.textContent = 'Odesílám…';
@@ -298,7 +377,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            credential, event_id: eventId,
+            ...identityPayload(), event_id: eventId || undefined,
             jmeno_prezdivka: jmenoInput.value.trim(),
             profily: document.getElementById('q-profily').value.trim(),
             upresneni: selectedUpresneni(),
@@ -328,7 +407,11 @@
               : (data.discord_cta_url
                 ? `<a href="${data.discord_cta_url}" target="_blank" class="btn btn-primary" style="margin-top:12px;">Propojit a otevřít Discord</a>`
                 : '');
-            resultPanel.innerHTML = `
+            resultPanel.innerHTML = data.updated ? `
+              <h4 style="margin-top:0;">Změny uložené!</h4>
+              <p>Dotazník jsme aktualizovali. Teď ho posoudí patron a ozve se ti na osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
+              ${discordHtml}
+            ` : `
               <h4 style="margin-top:0;">Díky za vyplnění!</h4>
               <p>Dotazník máme. Teď ho posoudí patron a ozve se ti na osobní nebo online popovídání o tom, jak to na akcích chodí a co můžeš očekávat.</p>
               ${discordHtml}
