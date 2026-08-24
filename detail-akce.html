@@ -409,14 +409,20 @@
 
       // Typ B (2026-08-24): dokud chybí role na Discordu, platba se vůbec nezobrazuje -
       // stejná informace jako v e-mailu (needs_discord_role z register-event-google /
-      // my-registrations), jen tlačítko tu vede na obecnou pozvánku (stejnou jako v
-      // patičce) - přesnou OAuth/přímou variantu podle stavu spárování řeší e-mail.
-      function showNeedsDiscordRolePanel() {
+      // my-registrations). DŮLEŽITÉ (oprava 2026-08-24, nalezeno živým testem): tlačítko
+      // MUSÍ vést na stejný discord_cta_url, co dostal e-mail (OAuth párování nebo přímý
+      // odkaz na server) - ne na obecnou veřejnou pozvánku. Obecná pozvánka jen připojí na
+      // server bez jakéhokoli párování s ooo_id, takže registrace zůstane navěky viset na
+      // "chybí role" i po připojení - přesně tohle se živě stalo. discord_cta_url může
+      // chybět jen ve výjimečném selhání (chybějící pairingCode) - pak fallback na
+      // obecnou pozvánku, lepší než úplně bez tlačítka.
+      function showNeedsDiscordRolePanel(ctaUrl) {
         document.getElementById('registration-block').classList.add('hidden');
+        const url = ctaUrl || 'https://discord.gg/qYCAubmDQc';
         showPanel('registration-info', `
           <h4 style="margin-top:0;">Ještě jeden krok</h4>
-          <p>Tvoje přihláška je přijatá. Tahle akce vyžaduje roli na Discordu (dokončit uvítací proces/pravidla serveru) — poslali jsme ti e-mail s tlačítkem, které tě tam rovnou zavede.</p>
-          <a href="https://discord.gg/qYCAubmDQc" target="_blank" class="btn btn-primary">Otevřít Discord</a>
+          <p>Tvoje přihláška je přijatá. Tahle akce vyžaduje roli na Discordu (dokončit uvítací proces/pravidla serveru) — poslali jsme ti e-mail se stejným tlačítkem.</p>
+          <a href="${url}" target="_blank" class="btn btn-primary">Propojit a otevřít Discord</a>
         `);
       }
 
@@ -467,7 +473,7 @@
       // liší se jen tím, podle čeho se řádek v Prihlasky hledá (user_id vs ooo_id).
       function renderRegistrationStatus(found, id, userName, idParam) {
         if (found && found.needs_discord_role) {
-          showNeedsDiscordRolePanel();
+          showNeedsDiscordRolePanel(found.discord_cta_url);
           return;
         }
         const p = parsePrihlaskaRow(found);
@@ -629,11 +635,12 @@
                   deposit_status: data.deposit_status, doplatek_status: data.doplatek_status,
                   doplatek: data.deposit_amount, partner: typUcastiG,
                   needs_discord_role: data.needs_discord_role,
+                  discord_cta_url: data.discord_cta_url,
                 }, data.ooo_id, data.name || data.email || '', 'ooo_id');
                 return;
               }
               if (data.needs_discord_role) {
-                showNeedsDiscordRolePanel();
+                showNeedsDiscordRolePanel(data.discord_cta_url);
                 return;
               }
               document.getElementById('registration-block').classList.add('hidden');
