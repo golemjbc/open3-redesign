@@ -22,23 +22,25 @@ Tahle verze mluví se **stejným živým backendem** jako produkční open3.cz:
 ## Struktura
 
 ```
-index.html          – úvodní stránka
-akce.html            – seznam akcí (role-gating)
-detail-akce.html     – detail akce, registrace, platby
-pravidla.html        – pravidla komunity (statický obsah)
-contact.html         – kontakt (statický obsah)
-assets/css/style.css – celý design systém
-assets/js/auth.js    – sdílená Discord OAuth logika
+index.html            – úvodní stránka
+akce.html              – seznam akcí (role-gating, zaplněnost)
+detail-akce.html       – detail akce, registrace (Discord i Google), dotazník, platby
+dotaznik.html          – vstupní dotazník pro akce typu C
+admin-akce.html        – admin panel: akce a přihlášky
+admin-clenove.html     – admin panel: přehled členů
+admin-dotazniky.html   – admin panel: fronta dotazníků
+pravidla.html          – pravidla komunity (statický obsah)
+contact.html           – kontakt (statický obsah)
+assets/css/style.css   – celý design systém
+assets/js/auth.js      – sdílené přihlášení, identita, avatar menu
+assets/js/member-modal.js  – znovupoužitelný detail člena (admin)
+assets/js/profile-modal.js – vlastní profil + párování účtů
 ```
 
 ## Jak si to prohlédnout lokálně
 
-```
-cd OOO-web-redesign
-python -m http.server 8000
-```
-a otevřít `http://localhost:8000`.
+Lokální server (`python -m http.server`) funguje pro statický náhled, ale API volání na `localhost` padají na CORS (jen produkční a sandboxová doména jsou povolené) — pro cokoliv, co volá backend, je spolehlivější testovat rovnou na nasazené sandbox doméně (viz Nasazení níže).
 
 ## Nasazení
 
-Zatím žádné. Až bude design schválený, dá se nasadit stejným způsobem jako `open3-novy` (GitHub Pages) — buď nahrazením obsahu toho repa, nebo přes vlastní doménu/subdoménu pro A/B porovnání.
+Sandbox se nasazuje přes obyčejný `git push` do `golemjbc/open3-redesign` — GitHub Pages publikuje automaticky na `https://golemjbc.github.io/open3-redesign/`. Nové funkce se odsud po otestování ručně a surgicky (ne kopií celého souboru) přenášejí do `OOO-produkce/frontend` → `golemjbc/open3-novy` → open3.cz. Backend (Azure Function App `ooo-functions`) je sdílený mezi sandboxem i produkcí — nasazení backendu tedy ovlivní obě najednou.
