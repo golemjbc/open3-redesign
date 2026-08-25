@@ -97,6 +97,19 @@
       return url;
     }
 
+    // Zaplněnost akce (2026-08-25) - `e.obsazenost` (pokud existuje) už z backendu nese
+    // hotovou frázi + vizuální procento pruhu, žádné číslo se tu nedopočítává ani
+    // neukazuje - jen se to vykreslí. Chybí-li obsazenost (akce nemá nastavenou kapacitu),
+    // nevykreslí se nic.
+    function renderOccupancy(obsazenost) {
+      if (!obsazenost) return '';
+      return `
+        <div class="occupancy">
+          <div class="occupancy-track"><div class="occupancy-fill" style="width:${obsazenost.fill}%"></div></div>
+          <div class="occupancy-text">${obsazenost.text}</div>
+        </div>`;
+    }
+
     function formatDateRange(fromStr, toStr) {
       fromStr = (fromStr || '').trim();
       toStr = (toStr || '').trim();
@@ -249,6 +262,7 @@
                 <div class="price">${formatDateRange(e['datum od'], e.datum_do) || 'Termín bude upřesněn'}</div>
                 ${e['místo'] ? `<div class="meta">${e['místo']}</div>` : ''}
                 <div class="meta">Registrace do ${e.registrace_konec || '—'}</div>
+                ${renderOccupancy(e.obsazenost)}
                 <p class="desc">${descText}</p>
                 <div class="footer-row">${footer}</div>
               </div>

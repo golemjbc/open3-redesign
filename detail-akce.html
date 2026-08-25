@@ -78,6 +78,16 @@
       }
       return url;
     }
+    // Zaplněnost akce (2026-08-25) - viz stejná funkce v akce.html pro kontext; `obsazenost`
+    // přichází hotová z backendu (fráze + vizuální %), tady se jen vykreslí.
+    function renderOccupancy(obsazenost) {
+      if (!obsazenost) return '';
+      return `
+        <div class="occupancy">
+          <div class="occupancy-track"><div class="occupancy-fill" style="width:${obsazenost.fill}%"></div></div>
+          <div class="occupancy-text">${obsazenost.text}</div>
+        </div>`;
+    }
     function formatDateRange(fromStr, toStr) {
       fromStr = (fromStr || '').trim();
       toStr = (toStr || '').trim();
@@ -220,6 +230,8 @@
                 <div class="date-strip-sub">${event['místo'] || '—'}</div>
                 <div class="date-strip-sub">Registrace do ${event.registrace_konec || 'bude upřesněno'}</div>
               </div>
+
+              ${renderOccupancy(event.obsazenost)}
 
               <div class="price-tag">${event.cena ? event.cena + ' Kč' : 'Cena bude upřesněna'}</div>
 

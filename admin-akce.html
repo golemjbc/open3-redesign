@@ -183,6 +183,7 @@
             <div class="form-group"><label class="form-label">Cena (jednorázovka)</label><div class="amount-field"><input id="f-cena" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
             <div class="form-group"><label class="form-label">Záloha</label><div class="amount-field"><input id="f-zaloha" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
             <div class="form-group"><label class="form-label">Doplatek</label><div class="amount-field"><input id="f-doplatek" class="form-control" inputmode="numeric"><span class="amount-suffix">Kč</span></div></div>
+            <div class="form-group"><label class="form-label">Kapacita (počet lidí, nepovinné)</label><input id="f-kapacita" class="form-control" inputmode="numeric" placeholder="např. 20"><p class="form-hint">Na webu se z toho nikdy neukáže číslo, jen orientační "zaplněnost" (Spousta prostoru / Začíná se plnit / ... / Obsazeno). Prázdné pole = zaplněnost se na webu vůbec nezobrazuje.</p></div>
             <div class="form-group">
               <label class="form-label">Jednorázová platba?</label>
               <select id="f-jednorazova" class="form-control"><option value="ne">Ne (záloha + doplatek)</option><option value="ano">Ano (jedna platba)</option></select>
@@ -263,7 +264,7 @@
 
     const EDITABLE_FIELD_IDS = [
       'nazev', 'popis', 'místo', 'lokalita_presna',
-      'cena', 'jednorazova', 'zaloha', 'doplatek', 'ucet', 'IBAN', 'discord_role_required',
+      'cena', 'jednorazova', 'zaloha', 'doplatek', 'ucet', 'IBAN', 'discord_role_required', 'kapacita',
     ];
 
     // Datum/čas (2026-08-24, na žádost - "chytřejší pole než jen obyčejný textový") -
