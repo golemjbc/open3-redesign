@@ -527,6 +527,11 @@
                           ${r.odhlaseno_datum ? '' : (r.doplatek_status || '').toUpperCase() !== 'OK'
                             ? `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Označit OK</button>`
                             : `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-value="nova_prihlaska" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Vrátit zpět</button>`}
+                          ${r.odhlaseno_datum ? '' : `
+                          <div style="display:flex; gap:4px; margin-top:6px; align-items:center;">
+                            <input type="number" min="0" step="1" value="${r.doplatek || ''}" placeholder="částka" class="doplatek-input" style="width:80px; padding:4px 6px; border-radius:6px; border:1.5px solid var(--border); font-size:0.82rem;">
+                            <button class="btn btn-outline btn-sm" data-set-doplatek="1" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Nastavit</button>
+                          </div>`}
                         </td>
                         <td>${r.odhlaseno_datum
                           ? `Zrušeno ${r.odhlaseno_datum}${r.vraceno_castka ? ' (vráceno ' + r.vraceno_castka + ' Kč)' : ''}`
@@ -565,6 +570,26 @@
               jmeno: btn.dataset.jmeno,
               paidTotal: (Number(btn.dataset.deposit) || 0) + (Number(btn.dataset.doplatek) || 0),
             })));
+            body.querySelectorAll('[data-set-doplatek]').forEach(btn => btn.addEventListener('click', () => {
+              const input = btn.parentElement.querySelector('.doplatek-input');
+              const doplatek_amount = Number(input.value);
+              if (Number.isNaN(doplatek_amount) || doplatek_amount < 0) { alert('Neplatná částka.'); return; }
+              fetch(API_BASE + '/api/panel-set-doplatek', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...identityPayload(), event_id: eventId,
+                  ooo_id: btn.dataset.ooo || undefined, user_id: btn.dataset.user || undefined,
+                  doplatek_amount,
+                }),
+              })
+                .then(r => r.json())
+                .then(res => {
+                  if (!res.ok) { alert('Chyba: ' + (res.error || 'neznámá')); return; }
+                  alert(res.notify_ok ? 'Doplatek nastaven, notifikace odeslána.' : 'Doplatek nastaven, notifikaci se ale nepodařilo odeslat (nebo o něm nemáme kontakt) - dej mu prosím vědět sám.');
+                  loadRegistrations(eventId);
+                })
+                .catch(err => alert('Chyba: ' + err.message));
+            }));
           }
           card.classList.remove('hidden');
           card.scrollIntoView({ behavior: 'smooth' });
