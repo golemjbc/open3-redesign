@@ -118,23 +118,28 @@
       body.innerHTML = `
         <div class="admin-responsive-table-wrap">
           <table class="admin-responsive-table">
-            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Kontakt</th><th>Setkání</th><th>Stav</th><th></th></tr></thead>
+            <thead><tr><th>Jméno</th><th>Vyplněno</th><th>Patron</th><th>Kontakt</th><th>Setkání</th><th>Stav</th></tr></thead>
             <tbody>
               ${list.map(q => `
                 <tr>
-                  <td data-label="Jméno">${q.jmeno_prezdivka || q.discord_jmeno_historicke || '(bez jména)'}${!q.ooo_id ? ' <span class="member-roles-cell" title="Starý import bez napojení na profil">(starý dotazník)</span>' : ''}</td>
+                  <td data-label="Jméno">
+                    <button type="button" class="member-link" data-ooo="${q.ooo_id || ''}" data-row-index="${q.row_index}">${q.jmeno_prezdivka || q.discord_jmeno_historicke || '(bez jména)'}</button>
+                    ${!q.ooo_id ? ' <span class="member-roles-cell" title="Starý import bez napojení na profil">(starý dotazník)</span>' : ''}
+                  </td>
                   <td data-label="Vyplněno">${q.timestamp || ''}</td>
                   <td data-label="Patron" title="${(q.patron_kdo_historicky || '').replace(/"/g, '&quot;')}">${q.patron_normalized || q.patron_kdo_historicky || '—'}</td>
                   <td data-label="Kontakt">${q.probehl_kontakt ? '✓' : '✗'}</td>
                   <td data-label="Setkání">${q.osobni_setkani ? '✓' : '✗'}</td>
                   <td data-label="Stav">${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
-                  <td data-label="Akce"><button type="button" class="btn btn-outline btn-sm" data-ooo="${q.ooo_id || ''}" data-row-index="${q.row_index}">Zobrazit detail</button></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       `;
+      // Klik na jméno (2026-08-24, na žádost - "jinde stačí kliknout na jméno, tady se
+      // muselo na tlačítko na konci") - sjednoceno se stejným vzorem jako admin-clenove.html
+      // a tabulka přihlášek v admin-akce.html.
       body.querySelectorAll('[data-row-index]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, '', btn.dataset.ooo ? '' : btn.dataset.rowIndex)));
     }
 
