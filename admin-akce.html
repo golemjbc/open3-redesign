@@ -24,6 +24,28 @@
     .admin-reg-table th { font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); }
     .status-ok { color: #1a7f37; font-weight: 700; }
     .status-pending { color: var(--text-muted); }
+
+    /* Platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, přepracováno na
+       žádost - dřív nahodile natěsnané "OK (450 Kč) [tlačítko]" + zvlášť kus s inputem
+       o kus níž, s ošklivými nativními šipkami na inputu). Jedna vizuálně uzavřená karta,
+       vždy ve stejném pořadí: částka + stav nahoře, pod tenkou linkou nastavení konkrétní
+       částky (jen doplatek), dole potvrzení zaplacení. */
+    .pay-cell { display: flex; flex-direction: column; gap: 9px; min-width: 172px; max-width: 210px; white-space: normal; background: var(--bg-alt); border-radius: var(--radius-sm); padding: 10px 12px; }
+    .pay-cell-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .pay-amount { font-weight: 800; font-size: 1.02rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .pay-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+    .pay-badge--ok { background: var(--success-bg); color: var(--success); }
+    .pay-badge--pending { background: #fff; color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--border); }
+    .pay-set-row { display: flex; gap: 6px; padding-top: 9px; border-top: 1px dashed var(--border); }
+    .pay-set-row input[type=number] { flex: 1; min-width: 0; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.85rem; background: var(--surface); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; transition: border-color .15s, box-shadow .15s; }
+    .pay-set-row input[type=number]::-webkit-outer-spin-button,
+    .pay-set-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pay-set-row input[type=number]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(175, 59, 110, 0.15); }
+    .pay-icon-btn { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .1s; }
+    .pay-icon-btn:hover { background: var(--primary-dark); }
+    .pay-icon-btn:active { transform: scale(0.94); }
+    .pay-toggle-link { align-self: flex-start; font-size: 0.78rem; font-weight: 600; color: var(--primary); background: none; border: none; cursor: pointer; padding: 0; }
+    .pay-toggle-link:hover { color: var(--primary-dark); text-decoration: underline; text-underline-offset: 2px; }
     .admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .admin-form-grid .form-group { margin-bottom: 0; }
     .hidden { display: none !important; }
@@ -490,6 +512,23 @@
       return (status || '').toUpperCase() === 'OK' ? '<span class="status-ok">OK</span>' : `<span class="status-pending">${status || '—'}</span>`;
     }
 
+    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25) - vždy ve
+    // stejném pořadí: částka + stav, volitelně nastavení konkrétní částky (jen doplatek),
+    // a nakonec odkaz na potvrzení/vrácení stavu platby.
+    function payCell({ amount, isOk, cancelled, toggle, setAmount }) {
+      const badge = `<span class="pay-badge ${isOk ? 'pay-badge--ok' : 'pay-badge--pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
+      if (cancelled) {
+        return `<div class="pay-cell"><div class="pay-cell-top"><span class="pay-amount">${amount} Kč</span>${badge}</div></div>`;
+      }
+      const setBlock = setAmount ? `
+        <div class="pay-set-row">
+          <input type="number" min="0" step="1" value="${amount || ''}" placeholder="Nastavit Kč" class="doplatek-input" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}" title="Individuální částka doplatku">
+          <button type="button" class="pay-icon-btn" data-set-doplatek="1" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}" title="Uložit částku a poslat notifikaci">✓</button>
+        </div>` : '';
+      const toggleLink = `<button type="button" class="pay-toggle-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Vrátit na nezaplaceno' : 'Potvrdit zaplacení'}</button>`;
+      return `<div class="pay-cell"><div class="pay-cell-top"><span class="pay-amount">${amount} Kč</span>${badge}</div>${setBlock}${toggleLink}</div>`;
+    }
+
     function loadRegistrations(eventId) {
       fetch(API_BASE + '/api/panel-list-registrations', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -518,21 +557,19 @@
                         <td>${(r.ooo_id || r.user_id) ? `<button type="button" class="member-link" data-ooo="${r.ooo_id || ''}" data-discord="${r.user_id || ''}">${r.jmeno || r.ooo_id || r.user_id}</button>` : (r.jmeno || '—')}</td>
                         <td>${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
                         <td>${r.typ_ucasti || ''}</td>
-                        <td>${statusLabel(r.deposit_status)} (${r.deposit || 0} Kč)
-                          ${r.odhlaseno_datum ? '' : (r.deposit_status || '').toUpperCase() !== 'OK'
-                            ? `<button class="btn btn-outline btn-sm" data-mark="deposit_status" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Označit OK</button>`
-                            : `<button class="btn btn-outline btn-sm" data-mark="deposit_status" data-value="nova_prihlaska" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Vrátit zpět</button>`}
-                        </td>
-                        <td>${statusLabel(r.doplatek_status)} (${r.doplatek || 0} Kč)
-                          ${r.odhlaseno_datum ? '' : (r.doplatek_status || '').toUpperCase() !== 'OK'
-                            ? `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Označit OK</button>`
-                            : `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-value="nova_prihlaska" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Vrátit zpět</button>`}
-                          ${r.odhlaseno_datum ? '' : `
-                          <div style="display:flex; gap:4px; margin-top:6px; align-items:center;">
-                            <input type="number" min="0" step="1" value="${r.doplatek || ''}" placeholder="částka" class="doplatek-input" style="width:80px; padding:4px 6px; border-radius:6px; border:1.5px solid var(--border); font-size:0.82rem;">
-                            <button class="btn btn-outline btn-sm" data-set-doplatek="1" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Nastavit</button>
-                          </div>`}
-                        </td>
+                        <td>${payCell({
+                          amount: r.deposit || 0,
+                          isOk: (r.deposit_status || '').toUpperCase() === 'OK',
+                          cancelled: !!r.odhlaseno_datum,
+                          toggle: { field: 'deposit_status', ooo: r.ooo_id, user: r.user_id },
+                        })}</td>
+                        <td>${payCell({
+                          amount: r.doplatek || 0,
+                          isOk: (r.doplatek_status || '').toUpperCase() === 'OK',
+                          cancelled: !!r.odhlaseno_datum,
+                          toggle: { field: 'doplatek_status', ooo: r.ooo_id, user: r.user_id },
+                          setAmount: { ooo: r.ooo_id, user: r.user_id },
+                        })}</td>
                         <td>${r.odhlaseno_datum
                           ? `Zrušeno ${r.odhlaseno_datum}${r.vraceno_castka ? ' (vráceno ' + r.vraceno_castka + ' Kč)' : ''}`
                           : `<button class="btn btn-outline btn-sm" data-cancel="1" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}" data-jmeno="${(r.jmeno || r.ooo_id || r.user_id || '').replace(/"/g, '&quot;')}" data-deposit="${(r.deposit_status || '').toUpperCase() === 'OK' ? (r.deposit || 0) : 0}" data-doplatek="${(r.doplatek_status || '').toUpperCase() === 'OK' ? (r.doplatek || 0) : 0}">Zrušit účast</button>`}
