@@ -637,6 +637,7 @@
               ${res.qr_base64
                 ? `<img src="data:image/png;base64,${res.qr_base64}" alt="QR platba vratky" style="max-width:220px; display:block; margin:12px 0;"><p class="member-modal-contact" style="white-space:pre-line;">${res.payment_text || ''}</p>`
                 : `<p class="form-hint">Číslo účtu nebylo zadané nebo je vratka 0 Kč — QR se nevygeneroval. Při ruční platbě použij VS ${res.vs} a do zprávy pro příjemce napiš název akce, "vratka" a tenhle VS.</p>`}
+              <p class="form-hint">${res.notify_ok ? 'Členovi odešla notifikace (DM/e-mail), že mu byla účast zrušená.' : 'Notifikaci se nepodařilo odeslat (nebo o něm nemáme kontakt) — dej mu prosím vědět sám.'}</p>
               <div style="margin-top:16px;"><button type="button" class="btn btn-outline btn-sm" id="cancel-done-btn">Zavřít</button></div>
             `;
             bodyEl.querySelector('#cancel-done-btn').addEventListener('click', () => { closeCancelModal(); loadRegistrations(eventId); loadEvents(); });
