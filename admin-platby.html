@@ -87,9 +87,12 @@
               <input type="checkbox" id="include-resolved-toggle">
               Zobrazit i vyřešené platby
             </label>
-            <button id="btn-sync-now" class="btn btn-outline btn-sm">Stáhnout nové platby z FIO</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button id="btn-sync-now" class="btn btn-outline btn-sm">Stáhnout nové platby z FIO</button>
+              <button id="btn-backfill" class="btn btn-outline btn-sm">Dohledat historii (3 měsíce)</button>
+            </div>
           </div>
-          <p class="form-hint">Časovač na pozadí stahuje nové platby z FIO banky každých 15 minut a podle variabilního symbolu je sám spáruje se zálohou/doplatkem, pokud vše sedí (akce, osoba, směr platby i částka). Cokoliv nesedí na první pohled, skončí tady k ruční kontrole - nikdy se nic nepotvrdí "napůl jistě".</p>
+          <p class="form-hint">Časovač na pozadí stahuje nové platby z FIO banky každých 15 minut a podle variabilního symbolu je sám spáruje se zálohou/doplatkem, pokud vše sedí (akce, osoba, směr platby i částka). Cokoliv nesedí na první pohled, skončí tady k ruční kontrole - nikdy se nic nepotvrdí "napůl jistě". "Dohledat historii" je jednorázové zpětné stažení - platby, co byly dřív ručně potvrzené, se v historii jen zalogují (ne jako podezřelá duplicita), ať se najdou hlavně ty, co se dřív přehlédly.</p>
           <div id="fio-sync-msg" class="form-hint"></div>
           <div id="fio-payments-body" style="margin-top:16px;"><p class="form-hint">Načítám…</p></div>
         </div>
@@ -268,6 +271,30 @@
           } else {
             notice.classList.add('hidden');
             msg.textContent = `Staženo ${res.fetched} plateb (${res.new || 0} nových) - automaticky potvrzeno ${res.autoOk}, ke kontrole ${res.needsReview}, nespárováno ${res.unmatched}.`;
+          }
+          loadPayments();
+        })
+        .catch(err => { msg.textContent = 'Chyba: ' + err.message; });
+    });
+
+    document.getElementById('btn-backfill').addEventListener('click', () => {
+      if (!confirm('Dohledat platby za poslední 3 měsíce z FIO banky? Je to jednorázová akce - už dřív ručně potvrzené platby se jen zalogují (ne jako duplicita), hlavně se tím najdou ty, co se přehlédly.')) return;
+      const msg = document.getElementById('fio-sync-msg');
+      msg.textContent = 'Dohledávám historii (může to chvíli trvat)…';
+      fetch(API_BASE + '/api/panel-backfill-fio-payments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...identityPayload(), days: 89 }),
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.ok) { msg.textContent = 'Chyba: ' + (res.error || 'neznámá'); return; }
+          const notice = document.getElementById('fio-token-notice');
+          if (res.skipped) {
+            notice.textContent = res.reason;
+            notice.classList.remove('hidden');
+            msg.textContent = '';
+          } else {
+            notice.classList.add('hidden');
+            msg.textContent = `Dohledáno (${res.dateFrom} – ${res.dateTo}): ${res.fetched} plateb (${res.new || 0} nových) - automaticky potvrzeno/zalogováno ${res.autoOk}, ke kontrole ${res.needsReview}, nespárováno ${res.unmatched}.`;
           }
           loadPayments();
         })
