@@ -15,37 +15,45 @@
     .admin-event-card h3 { margin: 0 0 4px; }
     .admin-event-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
     .admin-event-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    /* Tabulka přihlášek se na mobilu nevešla a posouvala celou stránku vodorovně
-       (2026-08-24, oprava) - teď se posouvá jen ona sama, uvnitř vlastního rámečku. */
-    .admin-reg-table-wrap { overflow-x: auto; margin-top: 12px; }
-    .admin-reg-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.88rem; }
-    .admin-reg-table th, .admin-reg-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; white-space: nowrap; }
-    .admin-reg-table td:nth-child(2) { white-space: normal; }
-    .admin-reg-table th { font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); }
     .status-ok { color: #1a7f37; font-weight: 700; }
     .status-pending { color: var(--text-muted); }
 
-    /* Platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, přepracováno na
-       žádost - dřív nahodile natěsnané "OK (450 Kč) [tlačítko]" + zvlášť kus s inputem
-       o kus níž, s ošklivými nativními šipkami na inputu). Jedna vizuálně uzavřená karta,
-       vždy ve stejném pořadí: částka + stav nahoře, pod tenkou linkou nastavení konkrétní
-       částky (jen doplatek), dole potvrzení zaplacení. */
-    .pay-cell { display: flex; flex-direction: column; gap: 9px; min-width: 172px; max-width: 210px; white-space: normal; background: var(--bg-alt); border-radius: var(--radius-sm); padding: 10px 12px; }
-    .pay-cell-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .pay-amount { font-weight: 800; font-size: 1.02rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-    .pay-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-    .pay-badge--ok { background: var(--success-bg); color: var(--success); }
-    .pay-badge--pending { background: #fff; color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--border); }
-    .pay-set-row { display: flex; gap: 6px; padding-top: 9px; border-top: 1px dashed var(--border); }
-    .pay-set-row input[type=number] { flex: 1; min-width: 0; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.85rem; background: var(--surface); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; transition: border-color .15s, box-shadow .15s; }
-    .pay-set-row input[type=number]::-webkit-outer-spin-button,
-    .pay-set-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .pay-set-row input[type=number]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(175, 59, 110, 0.15); }
-    .pay-icon-btn { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .1s; }
+    /* Platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, potřetí
+       přepracováno na žádost - "pořád chaos", "nekoukal jsem se na mobilu"). Dva
+       problémy s předchozí verzí: (1) vlastní tabulka `.admin-reg-table` neuměla na
+       mobilu nic jiného než vodorovné posouvání, zatímco zbytek administrace
+       (admin-clenove.html, admin-dotazniky.html) už dávno používá sdílený vzor
+       `.admin-responsive-table` (řádek → karta s popisky na úzkém displeji) - tabulka
+       přihlášek teď na ten stejný sdílený vzor přechází, žádná nová/jiná mobilní
+       logika; (2) "karta v kartě" (fialový box uvnitř bílého řádku) působila těžce a
+       nesourodě se zbytkem tabulky - teď je to jen tenký řádek (částka + tečkový
+       indikátor stavu), akce jsou textové odkazy pod tím, a formulář na úpravu částky
+       se u doplatku zobrazí, jen když na to člověk klikne ("Upravit částku") - ne
+       natrvalo vystavený input jako předtím. */
+    .pay-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .pay-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pay-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.74rem; font-weight: 600; }
+    .pay-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .pay-status--ok { color: var(--success); }
+    .pay-status--pending { color: var(--text-muted); }
+    .pay-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+    .pay-link { font-size: 0.76rem; font-weight: 600; color: var(--primary); background: none; border: none; padding: 0; cursor: pointer; }
+    .pay-link:hover { color: var(--primary-dark); text-decoration: underline; text-underline-offset: 2px; }
+    .pay-edit { display: flex; gap: 6px; margin-top: 8px; }
+    .pay-edit.hidden { display: none; }
+    .pay-edit input[type=number] { width: 84px; padding: 6px 8px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.85rem; background: var(--surface); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+    .pay-edit input[type=number]::-webkit-outer-spin-button,
+    .pay-edit input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pay-edit input[type=number]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(175, 59, 110, 0.15); }
+    .pay-icon-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; border: none; background: var(--primary); color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .1s; }
     .pay-icon-btn:hover { background: var(--primary-dark); }
     .pay-icon-btn:active { transform: scale(0.94); }
-    .pay-toggle-link { align-self: flex-start; font-size: 0.78rem; font-weight: 600; color: var(--primary); background: none; border: none; cursor: pointer; padding: 0; }
-    .pay-toggle-link:hover { color: var(--primary-dark); text-decoration: underline; text-underline-offset: 2px; }
+    /* Sloupce Jméno/Účast v tabulce přihlášek mají tlačítka/odkazy, ne jen text - v
+       responzivním (kartovém) módu na mobilu potřebují trochu prostoru navíc pod
+       popiskem, ať tlačítko nekoliduje s řádkem nad sebou. */
+    @media (max-width: 700px) {
+      #registrations-body .admin-responsive-table td[data-label] { padding-top: 6px; padding-bottom: 6px; }
+    }
     .admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .admin-form-grid .form-group { margin-bottom: 0; }
     .hidden { display: none !important; }
@@ -512,21 +520,22 @@
       return (status || '').toUpperCase() === 'OK' ? '<span class="status-ok">OK</span>' : `<span class="status-pending">${status || '—'}</span>`;
     }
 
-    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25) - vždy ve
-    // stejném pořadí: částka + stav, volitelně nastavení konkrétní částky (jen doplatek),
-    // a nakonec odkaz na potvrzení/vrácení stavu platby.
-    function payCell({ amount, isOk, cancelled, toggle, setAmount }) {
-      const badge = `<span class="pay-badge ${isOk ? 'pay-badge--ok' : 'pay-badge--pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
-      if (cancelled) {
-        return `<div class="pay-cell"><div class="pay-cell-top"><span class="pay-amount">${amount} Kč</span>${badge}</div></div>`;
-      }
-      const setBlock = setAmount ? `
-        <div class="pay-set-row">
-          <input type="number" min="0" step="1" value="${amount || ''}" placeholder="Nastavit Kč" class="doplatek-input" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}" title="Individuální částka doplatku">
+    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, verze 3) -
+    // jeden tenký řádek (částka + tečkový stav), pod tím textové odkazy na akce; u
+    // doplatku formulář na úpravu částky vyskočí, jen když na "Upravit částku" člověk
+    // klikne (editId = id skryté sekce, přepíná se v listeneru u [data-toggle-edit]).
+    function payCell({ amount, isOk, cancelled, toggle, setAmount, editId }) {
+      const status = `<span class="pay-status pay-status--${isOk ? 'ok' : 'pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
+      const line = `<div class="pay-line"><span class="pay-amt">${amount} Kč</span>${status}</div>`;
+      if (cancelled) return line;
+      const toggleLink = `<button type="button" class="pay-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Vrátit na nezaplaceno' : 'Potvrdit zaplacení'}</button>`;
+      const editToggle = setAmount ? `<button type="button" class="pay-link" data-toggle-edit="${editId}">Upravit částku</button>` : '';
+      const editForm = setAmount ? `
+        <div class="pay-edit hidden" id="${editId}">
+          <input type="number" min="0" step="1" value="${amount || ''}" placeholder="Kč" class="doplatek-input" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}">
           <button type="button" class="pay-icon-btn" data-set-doplatek="1" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}" title="Uložit částku a poslat notifikaci">✓</button>
         </div>` : '';
-      const toggleLink = `<button type="button" class="pay-toggle-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Vrátit na nezaplaceno' : 'Potvrdit zaplacení'}</button>`;
-      return `<div class="pay-cell"><div class="pay-cell-top"><span class="pay-amount">${amount} Kč</span>${badge}</div>${setBlock}${toggleLink}</div>`;
+      return `${line}<div class="pay-links">${toggleLink}${editToggle}</div>${editForm}`;
     }
 
     function loadRegistrations(eventId) {
@@ -548,29 +557,30 @@
             body.innerHTML = '<p class="form-hint">Zatím nikdo přihlášený.</p>';
           } else {
             body.innerHTML = `
-              <div class="admin-reg-table-wrap">
-                <table class="admin-reg-table">
+              <div class="admin-responsive-table-wrap">
+                <table class="admin-responsive-table">
                   <thead><tr><th>Jméno</th><th>Kontakt</th><th>Typ účasti</th><th>Záloha</th><th>Doplatek</th><th>Účast</th></tr></thead>
                   <tbody>
-                    ${data.registrations.map(r => `
+                    ${data.registrations.map((r, i) => `
                       <tr${r.odhlaseno_datum ? ' class="reg-row-cancelled"' : ''}>
-                        <td>${(r.ooo_id || r.user_id) ? `<button type="button" class="member-link" data-ooo="${r.ooo_id || ''}" data-discord="${r.user_id || ''}">${r.jmeno || r.ooo_id || r.user_id}</button>` : (r.jmeno || '—')}</td>
-                        <td>${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
-                        <td>${r.typ_ucasti || ''}</td>
-                        <td>${payCell({
+                        <td data-label="Jméno">${(r.ooo_id || r.user_id) ? `<button type="button" class="member-link" data-ooo="${r.ooo_id || ''}" data-discord="${r.user_id || ''}">${r.jmeno || r.ooo_id || r.user_id}</button>` : (r.jmeno || '—')}</td>
+                        <td data-label="Kontakt">${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
+                        <td data-label="Typ účasti">${r.typ_ucasti || ''}</td>
+                        <td data-label="Záloha">${payCell({
                           amount: r.deposit || 0,
                           isOk: (r.deposit_status || '').toUpperCase() === 'OK',
                           cancelled: !!r.odhlaseno_datum,
                           toggle: { field: 'deposit_status', ooo: r.ooo_id, user: r.user_id },
                         })}</td>
-                        <td>${payCell({
+                        <td data-label="Doplatek">${payCell({
                           amount: r.doplatek || 0,
                           isOk: (r.doplatek_status || '').toUpperCase() === 'OK',
                           cancelled: !!r.odhlaseno_datum,
                           toggle: { field: 'doplatek_status', ooo: r.ooo_id, user: r.user_id },
                           setAmount: { ooo: r.ooo_id, user: r.user_id },
+                          editId: 'doplatek-edit-' + i,
                         })}</td>
-                        <td>${r.odhlaseno_datum
+                        <td data-label="Účast">${r.odhlaseno_datum
                           ? `Zrušeno ${r.odhlaseno_datum}${r.vraceno_castka ? ' (vráceno ' + r.vraceno_castka + ' Kč)' : ''}`
                           : `<button class="btn btn-outline btn-sm" data-cancel="1" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}" data-jmeno="${(r.jmeno || r.ooo_id || r.user_id || '').replace(/"/g, '&quot;')}" data-deposit="${(r.deposit_status || '').toUpperCase() === 'OK' ? (r.deposit || 0) : 0}" data-doplatek="${(r.doplatek_status || '').toUpperCase() === 'OK' ? (r.doplatek || 0) : 0}">Zrušit účast</button>`}
                         </td>
@@ -607,6 +617,10 @@
               jmeno: btn.dataset.jmeno,
               paidTotal: (Number(btn.dataset.deposit) || 0) + (Number(btn.dataset.doplatek) || 0),
             })));
+            body.querySelectorAll('[data-toggle-edit]').forEach(btn => btn.addEventListener('click', () => {
+              const el = document.getElementById(btn.dataset.toggleEdit);
+              if (el) el.classList.toggle('hidden');
+            }));
             body.querySelectorAll('[data-set-doplatek]').forEach(btn => btn.addEventListener('click', () => {
               const input = btn.parentElement.querySelector('.doplatek-input');
               const doplatek_amount = Number(input.value);
