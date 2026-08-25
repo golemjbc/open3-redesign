@@ -36,9 +36,22 @@
     .pay-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
     .pay-status--ok { color: var(--success); }
     .pay-status--pending { color: var(--text-muted); }
-    .pay-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+    .pay-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
     .pay-link { font-size: 0.76rem; font-weight: 600; color: var(--primary); background: none; border: none; padding: 0; cursor: pointer; }
     .pay-link:hover { color: var(--primary-dark); text-decoration: underline; text-underline-offset: 2px; }
+    /* Přepínač zaplaceno/nezaplaceno (2026-08-25, na žádost - dřív textový odkaz
+       "Zrušit" vedle stavu platby, který si člověk spletl se "Zrušit účast" úplně
+       vpravo ve stejném řádku). Skutečný vizuální on/off přepínač jednoznačně
+       neznamená "zrušit", jen mění stav zaplaceno/nezaplaceno. */
+    .pay-switch { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+    .pay-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .pay-switch-track { width: 34px; height: 19px; border-radius: 999px; background: var(--border); position: relative; flex-shrink: 0; transition: background .15s; }
+    .pay-switch-thumb { position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(10, 16, 69, 0.25); transition: transform .15s; }
+    .pay-switch input:checked ~ .pay-switch-track { background: var(--success); }
+    .pay-switch input:checked ~ .pay-switch-track .pay-switch-thumb { transform: translateX(15px); }
+    .pay-switch input:focus-visible ~ .pay-switch-track { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .pay-switch-label { font-size: 0.76rem; font-weight: 600; color: var(--text-muted); }
+    .pay-switch input:checked ~ .pay-switch-label { color: var(--success); }
     .pay-edit { display: flex; gap: 6px; margin-top: 8px; }
     .pay-edit.hidden { display: none; }
     .pay-edit input[type=number] { width: 84px; padding: 6px 8px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.85rem; background: var(--surface); font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
@@ -520,23 +533,31 @@
       return (status || '').toUpperCase() === 'OK' ? '<span class="status-ok">OK</span>' : `<span class="status-pending">${status || '—'}</span>`;
     }
 
-    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, verze 4,
-    // zkrácené popisky na žádost - jen "Potvrdit"/"Zrušit" a "Aktualizovat částku", ne
-    // delší věty) - jeden tenký řádek (částka + tečkový stav), pod tím textové odkazy na
-    // akce; u doplatku formulář na úpravu částky vyskočí, jen když na to člověk klikne
-    // (editId = id skryté sekce, přepíná se v listeneru u [data-toggle-edit]).
+    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, verze 5 -
+    // skutečný přepínač zaplaceno/nezaplaceno místo textového odkazu "Zrušit", co si
+    // šlo splést se "Zrušit účast" ve stejném řádku) - částka nahoře, pod tím přepínač
+    // stavu platby a u doplatku navíc odkaz na úpravu částky (editId = id skryté sekce,
+    // přepíná se v listeneru u [data-toggle-edit]).
     function payCell({ amount, isOk, cancelled, toggle, setAmount, editId }) {
-      const status = `<span class="pay-status pay-status--${isOk ? 'ok' : 'pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
-      const line = `<div class="pay-line"><span class="pay-amt">${amount} Kč</span>${status}</div>`;
-      if (cancelled) return line;
-      const toggleLink = `<button type="button" class="pay-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Zrušit' : 'Potvrdit'}</button>`;
+      const amt = `<span class="pay-amt">${amount} Kč</span>`;
+      if (cancelled) {
+        const status = `<span class="pay-status pay-status--${isOk ? 'ok' : 'pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
+        return `<div class="pay-line">${amt}${status}</div>`;
+      }
+      const line = `<div class="pay-line">${amt}</div>`;
+      const toggleSwitch = `
+        <label class="pay-switch" title="${isOk ? 'Označit jako nezaplacené' : 'Označit jako zaplacené'}">
+          <input type="checkbox" ${isOk ? 'checked' : ''} data-mark="${toggle.field}" data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">
+          <span class="pay-switch-track"><span class="pay-switch-thumb"></span></span>
+          <span class="pay-switch-label">${isOk ? 'Zaplaceno' : 'Nezaplaceno'}</span>
+        </label>`;
       const editToggle = setAmount ? `<button type="button" class="pay-link" data-toggle-edit="${editId}">Aktualizovat částku</button>` : '';
       const editForm = setAmount ? `
         <div class="pay-edit hidden" id="${editId}">
           <input type="number" min="0" step="1" value="${amount || ''}" placeholder="Kč" class="doplatek-input" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}">
           <button type="button" class="pay-icon-btn" data-set-doplatek="1" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}" title="Uložit částku a poslat notifikaci">✓</button>
         </div>` : '';
-      return `${line}<div class="pay-links">${toggleLink}${editToggle}</div>${editForm}`;
+      return `${line}<div class="pay-links">${toggleSwitch}${editToggle}</div>${editForm}`;
     }
 
     function loadRegistrations(eventId) {
@@ -592,24 +613,27 @@
               </div>
             `;
             body.querySelectorAll('.member-link[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, btn.dataset.discord)));
-            body.querySelectorAll('[data-mark]').forEach(btn => btn.addEventListener('click', () => {
-              const field = btn.dataset.mark;
-              const value = btn.dataset.value || 'OK';
+            // Přepínač zaplaceno/nezaplaceno (2026-08-25) - checkbox, ne tlačítko: stav
+            // "zapnuto" = OK, "vypnuto" = nova_prihlaska. Při chybě se vizuálně vrátí
+            // zpátky, ať přepínač nelže o stavu, co se ve skutečnosti nezapsal.
+            body.querySelectorAll('[data-mark]').forEach(input => input.addEventListener('change', () => {
+              const field = input.dataset.mark;
+              const value = input.checked ? 'OK' : 'nova_prihlaska';
               fetch(API_BASE + '/api/panel-update-registration', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   ...identityPayload(), event_id: eventId,
-                  ooo_id: btn.dataset.ooo || undefined, user_id: btn.dataset.user || undefined,
+                  ooo_id: input.dataset.ooo || undefined, user_id: input.dataset.user || undefined,
                   field, value,
                 }),
               })
                 .then(r => r.json())
                 .then(res => {
-                  if (!res.ok) { alert('Chyba: ' + (res.error || 'neznámá')); return; }
+                  if (!res.ok) { alert('Chyba: ' + (res.error || 'neznámá')); input.checked = !input.checked; return; }
                   loadRegistrations(eventId);
                   loadEvents();
                 })
-                .catch(err => alert('Chyba: ' + err.message));
+                .catch(err => { alert('Chyba: ' + err.message); input.checked = !input.checked; });
             }));
             body.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => openCancelModal({
               eventId,
