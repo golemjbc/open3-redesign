@@ -60,19 +60,6 @@
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/profile-modal.js"></script>
   <script>
-    // Administrace v menu (2026-08-24) - samostatná kontrola, nezávislá na tom, jestli má
-    // stránka platné event_id v URL (hlavní blok níže roli zjišťuje jen v tom případě).
-    (function () {
-      const nav = document.getElementById('nav-admin');
-      const user = getLoggedUser();
-      if (!nav || !user || !user.userId) return;
-      fetch(API_BASE + '/api/members').then(r => r.json()).then(members => {
-        const me = members.find(m => m.user_id === user.userId);
-        if (me && (me.roles['Rada'] || '').toString().trim().toUpperCase() === 'X') nav.style.display = '';
-      }).catch(() => {});
-    })();
-  </script>
-  <script>
     // Po přihlášení přes hlavičku (na téhle stránce často z access-denied stavu, kdy
     // stránka ještě nezná roli/typ přihlášení) se musí celá stránka znovu vyhodnotit -
     // stejný vzorec jako akce.html, jinak zůstane viset na starém stavu bez obnovení.

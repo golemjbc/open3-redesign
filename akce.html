@@ -181,11 +181,8 @@
     const loggedUser = getLoggedUser();
 
     Promise.all([loadMyRoles(loggedUser), loadMyRegistrations(loggedUser)]).then(([myRoles, myRegisteredEventIds]) => {
-      // Administrace v menu (2026-08-24) - jen UX zkratka pro radu, backend admin
-      // endpointy stejnou roli ověřují znovu, nezávisle (requireAdminIdentity).
-      if ((myRoles['Rada'] || '').toString().trim().toUpperCase() === 'X') {
-        document.getElementById('nav-admin').style.display = '';
-      }
+      // Administrace v menu - řeší teď centrálně initAdminNavLink v auth.js (rychlejší,
+      // bez zpoždění, kontroluje i Spolupracovník / tvůrce, ne jen Rada; 2026-08-25).
       fetch(API_BASE + '/api/events')
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(events => {
