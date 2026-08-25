@@ -520,16 +520,17 @@
       return (status || '').toUpperCase() === 'OK' ? '<span class="status-ok">OK</span>' : `<span class="status-pending">${status || '—'}</span>`;
     }
 
-    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, verze 3) -
-    // jeden tenký řádek (částka + tečkový stav), pod tím textové odkazy na akce; u
-    // doplatku formulář na úpravu částky vyskočí, jen když na "Upravit částku" člověk
-    // klikne (editId = id skryté sekce, přepíná se v listeneru u [data-toggle-edit]).
+    // Jedna platební buňka (záloha/doplatek) v přehledu přihlášek (2026-08-25, verze 4,
+    // zkrácené popisky na žádost - jen "Potvrdit"/"Zrušit" a "Aktualizovat částku", ne
+    // delší věty) - jeden tenký řádek (částka + tečkový stav), pod tím textové odkazy na
+    // akce; u doplatku formulář na úpravu částky vyskočí, jen když na to člověk klikne
+    // (editId = id skryté sekce, přepíná se v listeneru u [data-toggle-edit]).
     function payCell({ amount, isOk, cancelled, toggle, setAmount, editId }) {
       const status = `<span class="pay-status pay-status--${isOk ? 'ok' : 'pending'}">${isOk ? 'Zaplaceno' : 'Čeká'}</span>`;
       const line = `<div class="pay-line"><span class="pay-amt">${amount} Kč</span>${status}</div>`;
       if (cancelled) return line;
-      const toggleLink = `<button type="button" class="pay-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Vrátit na nezaplaceno' : 'Potvrdit zaplacení'}</button>`;
-      const editToggle = setAmount ? `<button type="button" class="pay-link" data-toggle-edit="${editId}">Upravit částku</button>` : '';
+      const toggleLink = `<button type="button" class="pay-link" data-mark="${toggle.field}" ${isOk ? 'data-value="nova_prihlaska"' : ''} data-ooo="${toggle.ooo || ''}" data-user="${toggle.user || ''}">${isOk ? 'Zrušit' : 'Potvrdit'}</button>`;
+      const editToggle = setAmount ? `<button type="button" class="pay-link" data-toggle-edit="${editId}">Aktualizovat částku</button>` : '';
       const editForm = setAmount ? `
         <div class="pay-edit hidden" id="${editId}">
           <input type="number" min="0" step="1" value="${amount || ''}" placeholder="Kč" class="doplatek-input" data-ooo="${setAmount.ooo || ''}" data-user="${setAmount.user || ''}">
