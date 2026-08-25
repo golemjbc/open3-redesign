@@ -20,6 +20,16 @@ function isGoogleUser(user) {
   return !!(user && (user.provider === 'google' || /^google_/.test(user.userId || '')));
 }
 
+// Tělo požadavku na identitu pro backend (2026-08-25, na žádost - "stačila by na to jedna
+// funkce" - tahle přesná logika byla nezávisle přepsaná na 4 místech: admin-akce.html,
+// admin-clenove.html, admin-dotazniky.html, member-modal.js, profile-modal.js). Google
+// cesta posílá credential (ověří se serverem), Discord cesta jen ID (server si identitu
+// dohledá sám, stejný důvěryhodnostní model jako u zbytku backendu).
+function getIdentityPayload(user) {
+  if (!user) return null;
+  return isGoogleUser(user) ? { credential: user.credential } : { discord_user_id: user.userId };
+}
+
 // Položka "Administrace" v hlavičce (2026-08-25, oprava - "zobrazuje se se zpožděním").
 // Dřív to KAŽDÁ stránka zjišťovala vlastní kopií stejného kódu přes /api/members, což
 // stahuje do prohlížeče celý seznam všech ~360 členů jen kvůli jedné vlastní řádce -

@@ -147,8 +147,7 @@
         // Typ B (Google) i typ C (Google i Discord, 2026-08-24) - stejná výjimka jako v
         // akce.html, viz komentář tam. Bez role musí na detail vůbec vidět, jinak se
         // nikdy nedostane k registraci/formuláři, co ho k roli teprve navede.
-        const isGoogleUser = !!(loggedUser && (loggedUser.provider === 'google' || /^google_/.test(loggedUser.userId || '')));
-        const canBypassRoleCheck = (event.typ_akce === 'B' && isGoogleUser) || event.typ_akce === 'C';
+        const canBypassRoleCheck = (event.typ_akce === 'B' && isGoogleUser(loggedUser)) || event.typ_akce === 'C';
         const hasAccess = isLoggedIn && (isPublicEvent || canBypassRoleCheck || userHasRequiredRole(requiredRoles, myRoles));
 
         if (!hasAccess) {
@@ -246,7 +245,7 @@
                 // (vznikla dřív, než auth.js začal provider ukládat) - bez tohohle fallbacku
                 // se takový člověk tiše přesměruje na starou Discord přihlášku (viz krok 22,
                 // 2026-08-23 - přesně tenhle případ nastal a přihláška šla špatnou cestou).
-                const isGoogleUser = !!(currentUser && (currentUser.provider === 'google' || /^google_/.test(currentUser.userId || '')));
+                const isGoogleUser = window.isGoogleUser(currentUser);
                 const isPublicEvent = event.typ_akce === 'A';
                 // Typ B (jen role na Discordu) i typ C (dotazník + schválení patronem,
                 // Fáze 5, 2026-08-24) přes Google umí endpoint - formulář se zobrazí
@@ -609,7 +608,7 @@
         // rovnou jako user_id, což u Google účtu mate dvě různé věci ("google_<sub>" není
         // Discord ID) a u staré/zbylé session mohlo najít cizí/neplatnou registraci, co s
         // aktuálním přihlášením nesouvisí (nahlásila uživatelka 2026-08-23).
-        if (provider === 'google' || /^google_/.test(userId)) return;
+        if (isGoogleUser({ provider, userId })) return;
 
         fetch(API_BASE + '/api/my-registrations?user_id=' + encodeURIComponent(userId))
           .then(r => r.json())
@@ -640,7 +639,7 @@
         // google čeká `discord_user_id` - dva různé, staré/nové konvence, nesjednocovat
         // silou na jednu, ať se to nesplete).
         const loggedUserForForm = getLoggedUser();
-        const isGoogleUserForForm = !!(loggedUserForForm && (loggedUserForForm.provider === 'google' || /^google_/.test(loggedUserForForm.userId || '')));
+        const isGoogleUserForForm = isGoogleUser(loggedUserForForm);
         const storedCredential = isGoogleUserForForm ? (loggedUserForForm.credential || null) : null;
         const discordUserIdForForm = (loggedUserForForm && !isGoogleUserForForm) ? loggedUserForForm.userId : null;
         const hasIdentityForForm = !!(storedCredential || discordUserIdForForm);

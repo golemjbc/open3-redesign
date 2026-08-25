@@ -172,7 +172,7 @@
     }
 
     const user = getLoggedUser();
-    const isGoogleUser = !!(user && (user.provider === 'google' || /^google_/.test(user.userId || '')));
+    const isGoogleUser = window.isGoogleUser(user);
     // Dva zdroje identity (2026-08-24, na výslovnou žádost - odkaz na dotazník bude i na
     // Discordu) - Google (credential) nebo Discord (userId, stejný důvěřovaný vzorec jako
     // zbytek appky u Discord přihlášení).

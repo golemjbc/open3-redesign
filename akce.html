@@ -175,8 +175,7 @@
     // jeden dotaz na VŠECHNY registrace najednou (bez eventId filtru), ne po jedné.
     function loadMyRegistrations(loggedUser) {
       if (!loggedUser || !loggedUser.userId) return Promise.resolve(new Set());
-      const isGoogleUser = !!(loggedUser.provider === 'google' || /^google_/.test(loggedUser.userId || ''));
-      const body = isGoogleUser ? { credential: loggedUser.credential } : { user_id: loggedUser.userId };
+      const body = isGoogleUser(loggedUser) ? { credential: loggedUser.credential } : { user_id: loggedUser.userId };
       return fetch(API_BASE + '/api/my-registrations', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
@@ -219,8 +218,7 @@
             // Kinkster role neměl žádné vedení k dotazníku, jen zeď "nemáš oprávnění". Teď
             // se chová logicky stejně jako Google (na výslovnou žádost) - uvidí akci i bez
             // role, po pokusu o registraci ho čeká stejný dotazníkový flow.
-            const isGoogleUser = !!(loggedUser && (loggedUser.provider === 'google' || /^google_/.test(loggedUser.userId || '')));
-            const canBypassRoleCheck = (e.typ_akce === 'B' && isGoogleUser) || e.typ_akce === 'C';
+            const canBypassRoleCheck = (e.typ_akce === 'B' && isGoogleUser(loggedUser)) || e.typ_akce === 'C';
             const canSee = isLoggedIn && (isPublicEvent || canBypassRoleCheck || userHasRequiredRole(requiredRoles, myRoles));
             const soon = isSoon(e);
             const img = getSmartImageUrl(e.obrazek);

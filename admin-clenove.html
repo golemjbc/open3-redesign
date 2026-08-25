@@ -82,12 +82,7 @@
   <script src="assets/js/profile-modal.js"></script>
   <script src="assets/js/member-modal.js"></script>
   <script>
-    function identityPayload() {
-      const user = getLoggedUser();
-      if (!user) return null;
-      const isGoogleUser = !!(user.provider === 'google' || /^google_/.test(user.userId || ''));
-      return isGoogleUser ? { credential: user.credential } : { discord_user_id: user.userId };
-    }
+    function identityPayload() { return getIdentityPayload(getLoggedUser()); }
 
     const gateLoading = document.getElementById('gate-loading');
     const gateDenied = document.getElementById('gate-denied');
@@ -180,14 +175,13 @@
       gateLoading.classList.add('hidden');
       gateDenied.classList.remove('hidden');
     } else {
-      fetch(API_BASE + '/api/members')
+      fetch(API_BASE + '/api/my-roles', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(identityPayload()),
+      })
         .then(r => r.json())
-        .then(members => {
-          const me = members.find(m => m.user_id === loggedUser.userId);
-          const roles = (me && me.roles) || {};
-          const isRada = (roles['Rada'] || '').toString().trim().toUpperCase() === 'X';
+        .then(data => {
           gateLoading.classList.add('hidden');
-          if (!isRada) {
+          if (!data.rada) {
             gateDenied.classList.remove('hidden');
           } else {
             navAdmin.classList.remove('hidden');
