@@ -731,7 +731,7 @@ p { margin: 0 0 16px; color: var(--text-muted); }
    nevypadá prázdný. */
 .occupancy { margin: 10px 0; }
 .occupancy-track { height: 7px; border-radius: 999px; background: var(--bg-alt); overflow: hidden; }
-.occupancy-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary), #e0457a); }
+.occupancy-fill { height: 100%; border-radius: 999px; background: var(--gradient); }
 .occupancy-text { font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-top: 5px; }
 
 /* Zrušená účast v přehledu přihlášek (2026-08-25) - řádek zůstává, jen prošedlý a
