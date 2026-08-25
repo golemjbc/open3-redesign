@@ -47,7 +47,7 @@
 
       <div id="gate-denied" class="access-denied hidden">
         <h3>Nemáš oprávnění</h3>
-        <p>Tahle stránka je jen pro radu nebo patrony. Přihlas se prosím přes tlačítko v hlavičce účtem, co má jednu z těch rolí.</p>
+        <p>Tahle stránka je jen pro radu. Přihlas se prosím přes tlačítko v hlavičce účtem, co má roli Rada.</p>
       </div>
 
       <div id="admin-content" class="hidden">
@@ -169,9 +169,11 @@
     document.getElementById('member-search').addEventListener('input', applyMemberFilters);
     document.getElementById('member-role-filter').addEventListener('change', applyMemberFilters);
 
-    // Přístupová brána - Rada NEBO Patron (na rozdíl od admin-akce.html, co je jen pro
-    // Radu). Frontend gating je jen UX - backend (requireAdminIdentity) ověřuje roli
-    // znovu, nezávisle, u každého volání.
+    // Přístupová brána - jen Rada (2026-08-25, na žádost - volné procházení kontaktů
+    // všech členů zůstává jen radě; patroni tenhle detail vidí, jen když ho potřebují,
+    // přes frontu dotazníků, ne volným prohledáváním celého seznamu). Frontend gating je
+    // jen UX - backend (requireAdminIdentity) ověřuje roli znovu, nezávisle, u každého
+    // volání.
     const loggedUser = getLoggedUser();
     if (!loggedUser || !loggedUser.userId) {
       gateLoading.classList.add('hidden');
@@ -183,12 +185,11 @@
           const me = members.find(m => m.user_id === loggedUser.userId);
           const roles = (me && me.roles) || {};
           const isRada = (roles['Rada'] || '').toString().trim().toUpperCase() === 'X';
-          const isPatron = (roles['Patron'] || '').toString().trim().toUpperCase() === 'X';
           gateLoading.classList.add('hidden');
-          if (!isRada && !isPatron) {
+          if (!isRada) {
             gateDenied.classList.remove('hidden');
           } else {
-            if (isRada) navAdmin.classList.remove('hidden');
+            navAdmin.classList.remove('hidden');
             adminContent.classList.remove('hidden');
             loadMembers().catch(err => alert('Chyba při načítání: ' + err.message));
           }

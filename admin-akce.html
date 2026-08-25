@@ -79,7 +79,7 @@
 
       <div id="gate-denied" class="access-denied hidden">
         <h3>Nemáš oprávnění</h3>
-        <p>Tahle stránka je jen pro radu. Přihlas se prosím přes tlačítko v hlavičce účtem, co má roli Rada.</p>
+        <p>Tahle stránka je pro radu a organizátory akcí. Přihlas se prosím přes tlačítko v hlavičce účtem, co má roli Rada nebo Spolupracovník / tvůrce.</p>
       </div>
 
       <div id="admin-content" class="hidden">
@@ -604,14 +604,14 @@
         .catch(err => { document.getElementById('event-form-msg').textContent = 'Chyba: ' + err.message; });
     });
 
-    // Přístupová brána - stejný vzorec jako u ostatních stránek (loadMyRoles), jen
-    // rozhodující je role Rada. Frontend gating je jen UX - backend (requireAdminIdentity)
-    // ověřuje roli znovu, nezávisle, u každého volání.
+    // Přístupová brána - Rada NEBO Spolupracovník / tvůrce (2026-08-25, na žádost - akce
+    // a přihlášky spravují organizátoři, ne jen rada). Frontend gating je jen UX - backend
+    // (requireAdminIdentity) ověřuje roli znovu, nezávisle, u každého volání.
     const loggedUser = getLoggedUser();
     if (!loggedUser || !loggedUser.userId) {
       gateLoading.classList.add('hidden');
       gateDenied.classList.remove('hidden');
-      gateDenied.querySelector('p').textContent = 'Tahle stránka je jen pro radu. Přihlas se prosím přes tlačítko v hlavičce.';
+      gateDenied.querySelector('p').textContent = 'Tahle stránka je pro radu a organizátory akcí. Přihlas se prosím přes tlačítko v hlavičce.';
     } else {
       fetch(API_BASE + '/api/members')
         .then(r => r.json())
@@ -619,8 +619,9 @@
           const me = members.find(m => m.user_id === loggedUser.userId);
           const roles = (me && me.roles) || {};
           const isRada = (roles['Rada'] || '').toString().trim().toUpperCase() === 'X';
+          const isSpolupracovnik = (roles['Spolupracovník / tvůrce'] || '').toString().trim().toUpperCase() === 'X';
           gateLoading.classList.add('hidden');
-          if (!isRada) {
+          if (!isRada && !isSpolupracovnik) {
             gateDenied.classList.remove('hidden');
           } else {
             navAdmin.classList.remove('hidden');
