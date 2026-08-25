@@ -511,22 +511,26 @@
             body.innerHTML = `
               <div class="admin-reg-table-wrap">
                 <table class="admin-reg-table">
-                  <thead><tr><th>Jméno</th><th>Kontakt</th><th>Typ účasti</th><th>Záloha</th><th>Doplatek</th></tr></thead>
+                  <thead><tr><th>Jméno</th><th>Kontakt</th><th>Typ účasti</th><th>Záloha</th><th>Doplatek</th><th>Účast</th></tr></thead>
                   <tbody>
                     ${data.registrations.map(r => `
-                      <tr>
+                      <tr${r.odhlaseno_datum ? ' class="reg-row-cancelled"' : ''}>
                         <td>${(r.ooo_id || r.user_id) ? `<button type="button" class="member-link" data-ooo="${r.ooo_id || ''}" data-discord="${r.user_id || ''}">${r.jmeno || r.ooo_id || r.user_id}</button>` : (r.jmeno || '—')}</td>
                         <td>${r.email || ''}${r.telefon ? ' · ' + r.telefon : ''}</td>
                         <td>${r.typ_ucasti || ''}</td>
                         <td>${statusLabel(r.deposit_status)} (${r.deposit || 0} Kč)
-                          ${(r.deposit_status || '').toUpperCase() !== 'OK'
+                          ${r.odhlaseno_datum ? '' : (r.deposit_status || '').toUpperCase() !== 'OK'
                             ? `<button class="btn btn-outline btn-sm" data-mark="deposit_status" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Označit OK</button>`
                             : `<button class="btn btn-outline btn-sm" data-mark="deposit_status" data-value="nova_prihlaska" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Vrátit zpět</button>`}
                         </td>
                         <td>${statusLabel(r.doplatek_status)} (${r.doplatek || 0} Kč)
-                          ${(r.doplatek_status || '').toUpperCase() !== 'OK'
+                          ${r.odhlaseno_datum ? '' : (r.doplatek_status || '').toUpperCase() !== 'OK'
                             ? `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Označit OK</button>`
                             : `<button class="btn btn-outline btn-sm" data-mark="doplatek_status" data-value="nova_prihlaska" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}">Vrátit zpět</button>`}
+                        </td>
+                        <td>${r.odhlaseno_datum
+                          ? `Zrušeno ${r.odhlaseno_datum}${r.vraceno_castka ? ' (vráceno ' + r.vraceno_castka + ' Kč)' : ''}`
+                          : `<button class="btn btn-outline btn-sm" data-cancel="1" data-ooo="${r.ooo_id || ''}" data-user="${r.user_id || ''}" data-jmeno="${(r.jmeno || r.ooo_id || r.user_id || '').replace(/"/g, '&quot;')}" data-deposit="${(r.deposit_status || '').toUpperCase() === 'OK' ? (r.deposit || 0) : 0}" data-doplatek="${(r.doplatek_status || '').toUpperCase() === 'OK' ? (r.doplatek || 0) : 0}">Zrušit účast</button>`}
                         </td>
                       </tr>
                     `).join('')}
@@ -534,7 +538,7 @@
                 </table>
               </div>
             `;
-            body.querySelectorAll('[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, btn.dataset.discord)));
+            body.querySelectorAll('.member-link[data-ooo]').forEach(btn => btn.addEventListener('click', () => openMemberModal(btn.dataset.ooo, btn.dataset.discord)));
             body.querySelectorAll('[data-mark]').forEach(btn => btn.addEventListener('click', () => {
               const field = btn.dataset.mark;
               const value = btn.dataset.value || 'OK';
@@ -554,11 +558,91 @@
                 })
                 .catch(err => alert('Chyba: ' + err.message));
             }));
+            body.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => openCancelModal({
+              eventId,
+              ooo_id: btn.dataset.ooo || null,
+              user_id: btn.dataset.user || null,
+              jmeno: btn.dataset.jmeno,
+              paidTotal: (Number(btn.dataset.deposit) || 0) + (Number(btn.dataset.doplatek) || 0),
+            })));
           }
           card.classList.remove('hidden');
           card.scrollIntoView({ behavior: 'smooth' });
         })
         .catch(err => alert('Chyba: ' + err.message));
+    }
+
+    // Zrušit účast (2026-08-25) - spočítá, co bylo zaplaceno (jen podle deposit_status/
+    // doplatek_status = OK, žádné napojení na bankovní výpis zatím není), necha
+    // organizátora částku ručně upravit (částečná vratka), a po potvrzení ukáže platební
+    // blok obráceně - QR/VS/zpráva pro vratku na účet, který organizátor zadá ručně
+    // (dokud nejede automatické párování plateb). Přihláška se nemaže, jen se od teď
+    // zobrazuje prošedle/přeškrtnutá (viz reg-row-cancelled výše).
+    function cancelModalEnsureDom() {
+      if (document.getElementById('cancel-modal-overlay')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'cancel-modal-overlay';
+      overlay.className = 'member-modal-overlay hidden';
+      overlay.innerHTML = `
+        <div class="member-modal">
+          <button type="button" class="member-modal-close" aria-label="Zavřít">&times;</button>
+          <div class="member-modal-body" id="cancel-modal-body"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeCancelModal(); });
+      overlay.querySelector('.member-modal-close').addEventListener('click', closeCancelModal);
+    }
+    function closeCancelModal() {
+      const overlay = document.getElementById('cancel-modal-overlay');
+      if (overlay) overlay.classList.add('hidden');
+    }
+    function openCancelModal({ eventId, ooo_id, user_id, jmeno, paidTotal }) {
+      cancelModalEnsureDom();
+      const overlay = document.getElementById('cancel-modal-overlay');
+      const bodyEl = document.getElementById('cancel-modal-body');
+      bodyEl.innerHTML = `
+        <h3>Zrušit účast — ${jmeno}</h3>
+        <p class="member-modal-contact">Zaplaceno celkem (podle stavu záloha/doplatek): <strong>${paidTotal} Kč</strong>. Částku lze upravit, pokud se má vrátit jen část.</p>
+        <label class="member-notes-label">Kolik vrátit (Kč)
+          <input type="number" id="cancel-refund-amount" min="0" step="1" value="${paidTotal}" style="width:100%; padding:8px 10px; border-radius:8px; border:1.5px solid var(--border); box-sizing:border-box; margin-top:4px;">
+        </label>
+        <label class="member-notes-label" style="margin-top:12px; display:block;">Číslo účtu člena (odkud platil / kam se má vrátit)
+          <input type="text" id="cancel-refund-iban" placeholder="např. 123456789/0800" style="width:100%; padding:8px 10px; border-radius:8px; border:1.5px solid var(--border); box-sizing:border-box; margin-top:4px;">
+        </label>
+        <p class="form-hint" style="margin-top:6px;">Zatím se platby nenačítají automaticky — číslo účtu zadej ručně podle bankovního výpisu.</p>
+        <div style="display:flex; gap:10px; margin-top:18px;">
+          <button type="button" class="btn btn-primary btn-sm" id="cancel-confirm-btn">Zrušit účast a spočítat vratku</button>
+          <button type="button" class="btn btn-outline btn-sm" id="cancel-abort-btn">Zpět</button>
+        </div>
+        <p class="member-modal-msg" id="cancel-modal-msg"></p>
+      `;
+      overlay.classList.remove('hidden');
+      bodyEl.querySelector('#cancel-abort-btn').addEventListener('click', closeCancelModal);
+      bodyEl.querySelector('#cancel-confirm-btn').addEventListener('click', () => {
+        const refund_amount = Number(document.getElementById('cancel-refund-amount').value);
+        const refund_iban = document.getElementById('cancel-refund-iban').value.trim();
+        if (Number.isNaN(refund_amount) || refund_amount < 0) { document.getElementById('cancel-modal-msg').textContent = 'Neplatná částka.'; return; }
+        document.getElementById('cancel-modal-msg').textContent = 'Ukládám…';
+        fetch(API_BASE + '/api/panel-cancel-registration', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identityPayload(), event_id: eventId, ooo_id: ooo_id || undefined, user_id: user_id || undefined, refund_amount, refund_iban: refund_iban || undefined }),
+        })
+          .then(r => r.json())
+          .then(res => {
+            if (!res.ok) { document.getElementById('cancel-modal-msg').textContent = 'Chyba: ' + (res.error || 'neznámá'); return; }
+            bodyEl.innerHTML = `
+              <h3>Účast zrušena — ${jmeno}</h3>
+              <p class="member-modal-contact">Vratka: <strong>${res.vraceno_castka} Kč</strong>, VS: <strong>${res.vs}</strong></p>
+              ${res.qr_base64
+                ? `<img src="data:image/png;base64,${res.qr_base64}" alt="QR platba vratky" style="max-width:220px; display:block; margin:12px 0;"><p class="member-modal-contact" style="white-space:pre-line;">${res.payment_text || ''}</p>`
+                : `<p class="form-hint">Číslo účtu nebylo zadané nebo je vratka 0 Kč — QR se nevygeneroval. Při ruční platbě použij VS ${res.vs} a do zprávy pro příjemce napiš název akce, "vratka" a tenhle VS.</p>`}
+              <div style="margin-top:16px;"><button type="button" class="btn btn-outline btn-sm" id="cancel-done-btn">Zavřít</button></div>
+            `;
+            bodyEl.querySelector('#cancel-done-btn').addEventListener('click', () => { closeCancelModal(); loadRegistrations(eventId); loadEvents(); });
+          })
+          .catch(err => { document.getElementById('cancel-modal-msg').textContent = 'Chyba: ' + err.message; });
+      });
     }
 
     document.getElementById('btn-new-event').addEventListener('click', () => {

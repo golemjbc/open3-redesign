@@ -723,6 +723,11 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .member-link:hover { color: var(--primary-dark); }
 .mt-lg { margin-top: 32px; }
 
+/* Zrušená účast v přehledu přihlášek (2026-08-25) - řádek zůstává, jen prošedlý a
+   přeškrtnutý, ať je vidět historie, ne skrytý/smazaný záznam. */
+.reg-row-cancelled { opacity: 0.55; text-decoration: line-through; }
+.reg-row-cancelled .member-link { pointer-events: none; text-decoration: line-through; }
+
 /* ---------- Admin tabulky - responzivní na mobilu (2026-08-24, na žádost - vodorovné
    posouvání "není přehledný") ---------- */
 .admin-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
