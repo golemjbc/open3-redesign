@@ -22,10 +22,13 @@
     .gal-item { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface); }
     .gal-thumb-wrap { position: relative; aspect-ratio: 1; background: var(--bg-alt); }
     .gal-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .gal-thumb-wrap.gal-thumb-video { background: linear-gradient(135deg, var(--primary) 0%, var(--bg-alt) 150%); }
+    .gal-thumb-wrap.gal-thumb-video img { mix-blend-mode: luminosity; opacity: 0.6; }
     .gal-video-badge { position: absolute; top: 6px; left: 6px; background: rgba(10,16,69,0.75); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
     .gal-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
     .gal-check-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; }
     .gal-podalbum-input { width: 100%; padding: 5px 7px; border-radius: 6px; border: 1.5px solid var(--border); font-size: 0.78rem; box-sizing: border-box; }
+    .gal-actions-row { display: flex; gap: 10px; align-items: center; min-height: 24px; }
     .gal-delete-btn { font-size: 0.76rem; font-weight: 600; color: #b42318; background: none; border: none; padding: 0; cursor: pointer; align-self: flex-start; }
     .gal-delete-btn:hover { text-decoration: underline; }
 
@@ -168,9 +171,9 @@
           <div class="gal-grid">
             ${groups.get(key).map(it => `
               <div class="gal-item" data-id="${it.drive_file_id_zobrazeni}">
-                <div class="gal-thumb-wrap">
-                  <img src="${thumbUrl(it.drive_file_id_zobrazeni)}" alt="" loading="lazy">
-                  ${it.typ === 'video' ? '<span class="gal-video-badge">Video</span>' : ''}
+                <div class="gal-thumb-wrap${it.typ === 'video' ? ' gal-thumb-video' : ''}">
+                  <img src="${thumbUrl(it.drive_file_id_zobrazeni)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+                  ${it.typ === 'video' ? '<span class="gal-video-badge">▶ Video</span>' : ''}
                 </div>
                 <div class="gal-body">
                   <label class="gal-check-label">
@@ -182,7 +185,7 @@
                     Titulní fotka
                   </label>
                   <input type="text" class="gal-podalbum-input" data-action="podalbum" placeholder="podalbum (nepovinné)" value="${it.podalbum || ''}">
-                  <div style="display:flex; gap:10px; align-items:center;">
+                  <div class="gal-actions-row">
                     ${it.typ !== 'video' ? '<button type="button" class="member-link" data-action="rotate" style="font-size:0.76rem;">↻ Otočit o 90°</button>' : ''}
                     <button type="button" class="gal-delete-btn" data-action="delete">Smazat</button>
                   </div>

@@ -182,7 +182,7 @@
                 ${groups.get(key).map(it => `
                   <div class="epg-cell">
                     ${it.typ === 'video'
-                      ? `<div class="epg-item epg-video"><iframe src="${driveVideoEmbedUrl(it.drive_file_id_zobrazeni)}" allow="autoplay" loading="lazy"></iframe></div>`
+                      ? `<button type="button" class="epg-item epg-video-placeholder" data-video-id="${it.drive_file_id_zobrazeni}"><span class="epg-play-icon">▶</span></button>`
                       : `<button type="button" class="epg-item" data-lightbox-index="${photoIndexByFileId.get(it.drive_file_id_zobrazeni)}"><img src="${thumbUrl(it.drive_file_id_zobrazeni)}" loading="lazy" alt=""></button>`
                     }
                     ${prihlaseny ? renderReactionBar(it, allowedEmoji) : ''}
@@ -288,6 +288,18 @@
           titleEl.textContent = data.nazev || eventId;
           subtitleEl.textContent = formatDateRange(data.datum_od, data.datum_do);
           pageBody.innerHTML = renderGalleryItems(data.items, data.prihlaseny, data.allowed_emoji || []);
+          // Video se NAČTE (vloží iframe) až po kliknutí, ne rovnou při vykreslení stránky -
+          // víc Google Disk video přehrávačů najednou dokázalo prohlížeč zpomalit až
+          // zaseknout (ověřeno živě). Klik nahradí placeholder skutečným přehrávačem.
+          pageBody.querySelectorAll('.epg-video-placeholder').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const iframe = document.createElement('iframe');
+              iframe.src = driveVideoEmbedUrl(btn.dataset.videoId);
+              iframe.allow = 'autoplay';
+              iframe.className = 'epg-video-iframe';
+              btn.replaceWith(iframe);
+            });
+          });
           pageBody.querySelectorAll('.epg-item[data-lightbox-index]').forEach(btn => {
             btn.addEventListener('click', () => openLightbox(parseInt(btn.dataset.lightboxIndex, 10)));
           });
