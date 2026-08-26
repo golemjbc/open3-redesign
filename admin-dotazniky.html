@@ -125,7 +125,7 @@
                     ${!q.ooo_id ? ' <span class="member-roles-cell" title="Starý import bez napojení na profil">(starý dotazník)</span>' : ''}
                   </td>
                   <td data-label="Vyplněno">${q.timestamp || ''}</td>
-                  <td data-label="Patron" title="${(q.patron_kdo_historicky || '').replace(/"/g, '&quot;')}">${q.patron_normalized || q.patron_kdo_historicky || '—'}</td>
+                  <td data-label="Patron" title="${(q.patron_kdo_historicky || q.zna_patrony.join(', ') || '').replace(/"/g, '&quot;')}">${q.patron_kdo_historicky ? (q.patron_normalized || q.patron_kdo_historicky) : (q.zna_patrony.length ? q.zna_patrony.join(', ') : '—')}</td>
                   <td data-label="Kontakt">${q.probehl_kontakt ? '✓' : '✗'}</td>
                   <td data-label="Setkání">${q.osobni_setkani ? '✓' : '✗'}</td>
                   <td data-label="Stav">${q.resolved ? '✓ schváleno' : '⏳ čeká'}</td>
@@ -143,19 +143,18 @@
 
     // Filtry (2026-08-24, na žádost - "patron neschválen, bez kontaktu a tak vše, co tě
     // napadne") - aplikují se nad už načteným seznamem, žádný další dotaz na server.
-    // Filtruje se podle patron_normalized (2026-08-24, na žádost - "ty řetězce nejsou
-    // stejný ale logika ano") - staré dotazníky mají patrona zapsaného volným textem
-    // (lokalita, IG, Discord jméno), co se s dnešním krátkým výběrem nikdy nerovnalo,
-    // takže filtr na starých datech nikdy nic nenašel. Backend teď posílá i normalizovanou
-    // verzi (patron_normalized), spočítanou podle toho, čí jméno se ve starém textu
-    // objeví - viz normalizePatron v lib/members-row.js.
+    // Filtruje se podle patron_normalized_list (2026-08-26, rozšířeno na žádost - "co se
+    // nastaví, když si někdo vybere víc patronů") - pole obsahuje jak oficiálně přiřazeného
+    // patrona (patron_normalized), tak všechny, co si žadatel sám zaškrtl (zna_patrony) -
+    // dřív se filtrovalo jen podle jediného oficiálního přiřazení, takže nový dotazník s
+    // víc zaškrtnutými patrony a bez oficiálního přiřazení filtrem vůbec nešel najít.
     function applyQuestionnaireFilters() {
       const patronFilter = document.getElementById('q-filter-patron').value;
       const noContact = document.getElementById('q-filter-no-contact').checked;
       const noMeeting = document.getElementById('q-filter-no-meeting').checked;
       const filtered = allQuestionnaires.filter(q => {
-        if (patronFilter === '__bez__' && q.patron_normalized) return false;
-        if (patronFilter && patronFilter !== '__bez__' && q.patron_normalized !== patronFilter) return false;
+        if (patronFilter === '__bez__' && q.patron_normalized_list.length) return false;
+        if (patronFilter && patronFilter !== '__bez__' && !q.patron_normalized_list.includes(patronFilter)) return false;
         if (noContact && q.probehl_kontakt) return false;
         if (noMeeting && q.osobni_setkani) return false;
         return true;
