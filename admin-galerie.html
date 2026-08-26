@@ -182,7 +182,10 @@
                     Titulní fotka
                   </label>
                   <input type="text" class="gal-podalbum-input" data-action="podalbum" placeholder="podalbum (nepovinné)" value="${it.podalbum || ''}">
-                  <button type="button" class="gal-delete-btn" data-action="delete">Smazat</button>
+                  <div style="display:flex; gap:10px; align-items:center;">
+                    ${it.typ !== 'video' ? '<button type="button" class="member-link" data-action="rotate" style="font-size:0.76rem;">↻ Otočit o 90°</button>' : ''}
+                    <button type="button" class="gal-delete-btn" data-action="delete">Smazat</button>
+                  </div>
                 </div>
               </div>
             `).join('')}
@@ -221,6 +224,22 @@
           .then(r => r.json())
           .then(() => loadGallery())
           .catch(err => alert('Chyba: ' + err.message));
+      }));
+
+      // Otočit o 90° (2026-08-26, na žádost) - přepíše jen zobrazenou verzi na Disku,
+      // stejné ID, takže se po úspěchu stačí jen znovu vykreslit galerie (thumbnail cache
+      // Disku se může chvíli dotahovat, není to chyba).
+      galleryBody.querySelectorAll('[data-action="rotate"]').forEach(btn => btn.addEventListener('click', () => {
+        const id = btn.closest('.gal-item').dataset.id;
+        btn.disabled = true;
+        btn.textContent = 'Otáčím…';
+        fetch(API_BASE + '/api/panel-gallery-rotate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identityPayload(), drive_file_id_zobrazeni: id, degrees: 90 }),
+        })
+          .then(r => r.json())
+          .then(res => { if (!res.ok) { alert('Chyba: ' + (res.error || 'neznámá')); } loadGallery(); })
+          .catch(err => { alert('Chyba: ' + err.message); loadGallery(); });
       }));
 
       galleryBody.querySelectorAll('[data-action="delete"]').forEach(btn => btn.addEventListener('click', () => {
