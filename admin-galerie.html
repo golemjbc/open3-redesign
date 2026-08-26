@@ -166,6 +166,10 @@
                     <input type="checkbox" data-action="verejna" ${it.verejna ? 'checked' : ''}>
                     Veřejná
                   </label>
+                  <label class="gal-check-label">
+                    <input type="checkbox" data-action="titulni" ${it.titulni ? 'checked' : ''}>
+                    Titulní fotka
+                  </label>
                   <input type="text" class="gal-podalbum-input" data-action="podalbum" placeholder="podalbum (nepovinné)" value="${it.podalbum || ''}">
                   <button type="button" class="gal-delete-btn" data-action="delete">Smazat</button>
                 </div>
@@ -181,6 +185,20 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...identityPayload(), drive_file_id_zobrazeni: id, verejna: cb.checked }),
         }).catch(err => alert('Chyba: ' + err.message));
+      }));
+
+      // Titulní fotka (2026-08-26, na žádost) - exkluzivní na akci (backend sám odškrtne
+      // předchozí, viz panel-gallery-update), proto se po uložení musí celá galerie znovu
+      // načíst, ať se to i vizuálně promítne u té dřívější.
+      galleryBody.querySelectorAll('[data-action="titulni"]').forEach(cb => cb.addEventListener('change', () => {
+        const id = cb.closest('.gal-item').dataset.id;
+        fetch(API_BASE + '/api/panel-gallery-update', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identityPayload(), drive_file_id_zobrazeni: id, titulni: cb.checked }),
+        })
+          .then(r => r.json())
+          .then(() => loadGallery())
+          .catch(err => alert('Chyba: ' + err.message));
       }));
 
       galleryBody.querySelectorAll('[data-action="podalbum"]').forEach(inp => inp.addEventListener('change', () => {

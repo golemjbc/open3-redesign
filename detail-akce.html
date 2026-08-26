@@ -225,20 +225,24 @@
     if (!eventId) {
       pageBody.innerHTML = '<div class="empty-state">Akce nenalezena (chybí event_id v URL).</div>';
     } else {
+      // Fotogalerie se načítá NEZÁVISLE na zbytku stránky - hned, mimo Promise.all níže
+      // (2026-08-26, oprava - "galerii rozkliknu a napíše že tam nic není"). `/api/events`
+      // vrací jen NADCHÁZEJÍCÍ akce (viz events/index.js, `.filter(!isEventPast)`), takže
+      // `event` se pro proběhlou akci níže nikdy nenajde a celá stránka skončí na "nebyla
+      // nalezena" - přesně akce, ze kterých galerie typicky JSOU (fotky vznikají POTÉ, co
+      // akce proběhne). Galerie na tomhle vůbec nesmí záviset, viz backend/event-gallery,
+      // co si Akce řádek dohledává samo, nezávisle na `/api/events`.
+      loadEventGallery(eventId);
+
       Promise.all([
         fetch(API_BASE + '/api/events').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
         fetch(API_BASE + '/api/members').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       ]).then(([events, members]) => {
         const event = events.find(ev => ev.event_id === eventId);
         if (!event) {
-          pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena.</div>';
+          pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena (buď neexistuje, nebo už proběhla - detail akce se zobrazuje jen u nadcházejících akcí, galerie výše ale funguje i pro proběhlé).</div>';
           return;
         }
-
-        // Fotogalerie se načítá NEZÁVISLE na přístupu ke zbytku stránky (viz hasAccess
-        // níže) - veřejně označené fotky má vidět kdokoliv, i ten, kdo nemá právo se na
-        // akci přihlásit/vidět detail, viz backend/event-gallery.
-        loadEventGallery(eventId);
 
         // 🔒 Kontrola oprávnění - stejná logika jako na produkci (přihlášení + discord_role_required)
         const loggedUser = getLoggedUser();
