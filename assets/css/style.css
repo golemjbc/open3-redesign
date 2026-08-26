@@ -405,7 +405,7 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 
 /* ---------- Detail page ---------- */
 .detail-hero { padding: 40px 0 80px; }
-.back-link { font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+.back-link { font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
 
 .event-description {
   width: 100%;
