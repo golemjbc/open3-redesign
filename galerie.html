@@ -71,13 +71,19 @@
   <script>
     function identityPayload() { return getIdentityPayload(getLoggedUser()); }
     function thumbUrl(fileId, size) { return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size || 500}`; }
-    // Odkaz na PLNOU stránku Disku (2026-08-27, oprava - "video se nedá spustit bez
-    // přihlášení na Google a snaží se ti stahovat"). Vestavěný <iframe> s /preview to
-    // dřív dělal přes cizí (cross-origin) rámec - moderní prohlížeče tam čím dál častěji
-    // blokují cookies třetích stran, takže Disk nedokáže ověřit, že soubor je veřejný, a
-    // vynutí přihlášení / stažení. Otevření /view v NOVÉ záložce (plná navigace, ne
-    // rámec) tenhle problém nemá - funguje stejně jako běžně sdílený odkaz na Disk.
-    function driveVideoViewUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/view`; }
+    // Odkaz na video se otevírá jako PŘÍMÁ navigace (nová záložka), ne <iframe> (2026-08-27,
+    // oprava - "video se nedá spustit bez přihlášení na Google a snaží se ti stahovat").
+    // Vestavěný iframe běžel přes cizí (cross-origin) rámec - moderní prohlížeče tam čím
+    // dál častěji blokují cookies třetích stran, takže Disk nedokázal ověřit, že soubor je
+    // veřejný, a vynutil přihlášení/stažení. Přímá navigace tenhle problém nemá.
+    //
+    // POZOR: /preview, ne /view (2026-08-27, na žádost - "nemůže v tom přehrávači být
+    // vidět, že to hraje z mého soukromého disku?") - /view je plná stránka Disku s
+    // panelem "Sdílet" a podrobnostmi o souboru, které by prozradily, že vlastníkem je
+    // osobní účet (impersonace přes DRIVE_IMPERSONATE_USER, viz lib/drive.js). /preview
+    // je odlehčený přehrávač BEZ týhle chrome - i při přímé navigaci (mimo iframe) ukáže
+    // jen samotné video, žádné jméno/e-mail vlastníka. Ověřeno živě.
+    function driveVideoViewUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/preview`; }
 
     function formatDateRange(fromStr, toStr) {
       fromStr = (fromStr || '').trim();
