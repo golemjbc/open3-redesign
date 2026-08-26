@@ -21,6 +21,7 @@
         <ul class="nav-links" id="nav-links">
           <li><a href="index.html">Domů</a></li>
           <li><a href="akce.html" class="active">Akce</a></li>
+          <li><a href="galerie.html">Galerie</a></li>
           <li><a href="pravidla.html">Pravidla</a></li>
           <li><a href="contact.html">Kontakt</a></li>
           <li id="nav-admin" style="display:none;"><a href="admin-akce.html">Administrace</a></li>
@@ -97,7 +98,32 @@
     function thumbUrl(fileId, size) { return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size || 500}`; }
     function driveVideoEmbedUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/preview`; }
 
-    function renderEventGalleryItems(items) {
+    // Reakce (2026-08-26, na žádost - "5-10 emotikonů, ostatní vidí kdo jak reagoval, jen
+    // pro přihlášené"). Lišta reakcí se vykresluje jen když backend vrátil data.prihlaseny
+    // (odhlášený návštěvník žádnou reakční UI nevidí, viz event-gallery). Klik na
+    // existující reakci = přepnu/smažu svoji, klik na "+" otevře výběr emoji - obojí volá
+    // gallery-react a pak celou galerii znovu načte (jednodušší a spolehlivější než ruční
+    // přepočet lokálního stavu).
+    function renderReactionBar(item, allowedEmoji) {
+      const reakce = item.reakce || [];
+      const pills = reakce.map(r => {
+        const mine = r.emoji === item.moje_reakce;
+        const jmena = r.jmena.join(', ').replace(/"/g, '&quot;');
+        return `<button type="button" class="epg-reaction-pill${mine ? ' mine' : ''}" data-file-id="${item.drive_file_id_zobrazeni}" data-emoji="${r.emoji}" title="${jmena}">${r.emoji} ${r.pocet}</button>`;
+      }).join('');
+      const picker = allowedEmoji.map(e =>
+        `<button type="button" class="epg-reaction-pick" data-file-id="${item.drive_file_id_zobrazeni}" data-emoji="${e}">${e}</button>`
+      ).join('');
+      return `
+        <div class="epg-reactions">
+          ${pills}
+          <button type="button" class="epg-reaction-add" data-toggle-picker="1">+</button>
+          <div class="epg-reaction-picker hidden">${picker}</div>
+        </div>
+      `;
+    }
+
+    function renderEventGalleryItems(items, prihlaseny, allowedEmoji) {
       if (!items.length) return '';
       const groups = new Map();
       items.forEach(it => {
@@ -113,16 +139,32 @@
             <div class="epg-group">
               ${key ? `<div class="epg-group-title">${key}</div>` : ''}
               <div class="epg-grid">
-                ${groups.get(key).map(it => it.typ === 'video'
-                  ? `<div class="epg-item epg-video"><iframe src="${driveVideoEmbedUrl(it.drive_file_id_zobrazeni)}" allow="autoplay" loading="lazy"></iframe></div>`
-                  : `<a class="epg-item" href="${thumbUrl(it.drive_file_id_zobrazeni, 1600)}" target="_blank" rel="noopener"><img src="${thumbUrl(it.drive_file_id_zobrazeni)}" loading="lazy" alt=""></a>`
-                ).join('')}
+                ${groups.get(key).map(it => `
+                  <div class="epg-cell">
+                    ${it.typ === 'video'
+                      ? `<div class="epg-item epg-video"><iframe src="${driveVideoEmbedUrl(it.drive_file_id_zobrazeni)}" allow="autoplay" loading="lazy"></iframe></div>`
+                      : `<a class="epg-item" href="${thumbUrl(it.drive_file_id_zobrazeni, 1600)}" target="_blank" rel="noopener"><img src="${thumbUrl(it.drive_file_id_zobrazeni)}" loading="lazy" alt=""></a>`
+                    }
+                    ${prihlaseny ? renderReactionBar(it, allowedEmoji) : ''}
+                  </div>
+                `).join('')}
               </div>
             </div>
           `).join('')}
           <p class="form-hint epg-note">Fotky jsou zmenšené a mají drobný vodoznak. Chceš některou v původním rozlišení bez úprav? Napiš nám.</p>
         </div>
       `;
+    }
+
+    function sendGalleryReaction(eventId, fileId, emoji) {
+      const user = getLoggedUser();
+      fetch(API_BASE + '/api/gallery-react', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...(getIdentityPayload(user) || {}), drive_file_id_zobrazeni: fileId, emoji }),
+      })
+        .then(r => r.json())
+        .then(data => { if (data.ok) loadEventGallery(eventId); else alert('Chyba: ' + (data.error || 'reakci se nepodařilo uložit.')); })
+        .catch(() => alert('Chyba: reakci se nepodařilo uložit.'));
     }
 
     function loadEventGallery(eventId) {
@@ -134,7 +176,16 @@
         body: JSON.stringify({ ...(getIdentityPayload(user) || {}), event_id: eventId }),
       })
         .then(r => r.json())
-        .then(data => { if (data.ok) placeholder.innerHTML = renderEventGalleryItems(data.items); })
+        .then(data => {
+          if (!data.ok) return;
+          placeholder.innerHTML = renderEventGalleryItems(data.items, data.prihlaseny, data.allowed_emoji || []);
+          placeholder.querySelectorAll('.epg-reaction-add').forEach(btn => {
+            btn.addEventListener('click', () => btn.nextElementSibling.classList.toggle('hidden'));
+          });
+          placeholder.querySelectorAll('.epg-reaction-pill, .epg-reaction-pick').forEach(btn => {
+            btn.addEventListener('click', () => sendGalleryReaction(eventId, btn.dataset.fileId, btn.dataset.emoji));
+          });
+        })
         .catch(() => {}); // nekritické - stránka funguje i bez galerie
     }
 

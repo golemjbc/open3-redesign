@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta name="referrer" content="no-referrer">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OOO Community - Otevři se. Poznej se. Propoj se.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Galerie — OOO Community</title>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <button class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      <a class="brand" href="index.html"><img src="assets/images/OOOlogo.png" alt="OOO logo"> <span>OOO Community</span></a>
+      <nav>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="index.html">Domů</a></li>
+          <li><a href="akce.html">Akce</a></li>
+          <li><a href="galerie.html" class="active">Galerie</a></li>
+          <li><a href="pravidla.html">Pravidla</a></li>
+          <li><a href="contact.html">Kontakt</a></li>
+          <li id="nav-admin" style="display:none;"><a href="admin-akce.html">Administrace</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <div id="user-info"><img id="user-avatar" src="" alt=""><span id="user-name"></span></div>
+        <a id="login-button" href="#" class="btn btn-primary btn-sm">Přihlásit</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" style="padding-bottom: 0;">
+    <div class="container">
+      <span class="eyebrow">Vzpomínky</span>
+      <h1>Galerie akcí</h1>
+      <p class="form-hint">Fotky a videa z proběhlých akcí. Neveřejné fotky vidí jen Rada a účastníci dané akce.</p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="container">
+      <div id="events-container" class="event-grid">
+        <div class="loading-state">Načítám galerie…</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">OOO Community</div>
+        <ul class="footer-links">
+          <li><a href="mailto:info@open3.cz">info@open3.cz</a></li>
+          <li><a href="tel:+420735593621">+420 735 593 621</a></li>
+          <li><a href="https://discord.gg/qYCAubmDQc">Discord</a></li>
+          <li><a href="https://www.instagram.com/ooo.community">Instagram</a></li>
+        </ul>
+      </div>
+      <div class="footer-bottom">© 2026 OOO Community z.s. — Design: Adam (redesign koncept, mimo produkci)</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/profile-modal.js"></script>
+  <script>
+    function identityPayload() { return getIdentityPayload(getLoggedUser()); }
+    function thumbUrl(fileId, size) { return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size || 500}`; }
+
+    function formatDateRange(fromStr, toStr) {
+      fromStr = (fromStr || '').trim();
+      toStr = (toStr || '').trim();
+      if (!fromStr && !toStr) return '';
+      if (!fromStr) return toStr;
+      if (!toStr) return fromStr;
+      const parse = (s) => {
+        const parts = s.split('.').map(p => p.trim()).filter(Boolean);
+        return parts.length >= 3 ? { day: parts[0], month: parts[1], year: parts[2] } : null;
+      };
+      const from = parse(fromStr);
+      const to = parse(toStr);
+      if (!from || !to) return `${fromStr} – ${toStr}`;
+      if (from.year === to.year && from.month === to.month) return `${from.day}.–${to.day}.${to.month}.${to.year}`;
+      if (from.year === to.year) return `${from.day}.${from.month}. – ${to.day}.${to.month}.${to.year}`;
+      return `${fromStr} – ${toStr}`;
+    }
+
+    const container = document.getElementById('events-container');
+
+    fetch(API_BASE + '/api/gallery-events', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(identityPayload() || {}),
+    })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(data => {
+        if (!data.ok) throw new Error(data.error || 'Chyba při načítání galerií.');
+        const events = data.events || [];
+        if (!events.length) {
+          container.innerHTML = '<div class="empty-state">Zatím tu nejsou žádné galerie, které bys mohl(a) vidět.</div>';
+          return;
+        }
+        container.innerHTML = events.map(e => `
+          <div class="event-card">
+            <div class="thumb">
+              ${e.cover_typ === 'video' ? '<span class="badge-video">▶ video</span>' : ''}
+              <img src="${thumbUrl(e.cover_drive_file_id, 500)}" alt="${e.nazev || ''}" loading="lazy">
+            </div>
+            <div class="body">
+              <h3><a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}#event-photo-gallery-placeholder">${e.nazev || e.event_id}</a></h3>
+              <div class="price">${formatDateRange(e.datum_od, e.datum_do) || 'Termín neuveden'}</div>
+              <div class="meta">${e.pocet} ${e.pocet === 1 ? 'položka' : (e.pocet >= 2 && e.pocet <= 4 ? 'položky' : 'položek')}</div>
+              <div class="footer-row"><a href="detail-akce.html?event_id=${encodeURIComponent(e.event_id)}#event-photo-gallery-placeholder" class="btn btn-outline btn-block">Zobrazit galerii</a></div>
+            </div>
+          </div>
+        `).join('');
+      })
+      .catch(err => {
+        console.error(err);
+        container.innerHTML = '<div class="empty-state">Chyba při načítání galerií.</div>';
+      });
+
+    window.onOooLogin = () => location.reload();
+    window.onOooLogout = () => location.reload();
+  </script>
+</body>
+</html>

@@ -380,6 +380,12 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .event-card .desc { font-size: 0.88rem; color: var(--text-muted); flex: 1;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .event-card .footer-row { margin-top: 8px; }
+.event-card .badge-video {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 0.72rem; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px;
+}
 
 .access-badge {
   display: inline-block;
@@ -746,6 +752,20 @@ p { margin: 0 0 16px; color: var(--text-muted); }
 .epg-item:hover img { transform: scale(1.04); }
 .epg-video iframe { width: 100%; height: 100%; border: none; }
 .epg-note { margin-top: 8px; font-style: italic; }
+.epg-cell { display: flex; flex-direction: column; gap: 6px; }
+.epg-reactions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: relative; }
+.epg-reaction-pill, .epg-reaction-add, .epg-reaction-pick {
+  border: 1.5px solid var(--border); background: var(--bg-card, #fff);
+  border-radius: 999px; padding: 2px 9px; font-size: 0.82rem; cursor: pointer; line-height: 1.6;
+}
+.epg-reaction-pill.mine { border-color: var(--primary); background: var(--primary-bg, rgba(0,0,0,0.05)); font-weight: 700; }
+.epg-reaction-add { padding: 2px 8px; color: var(--text-muted); }
+.epg-reaction-picker {
+  display: flex; flex-wrap: wrap; gap: 4px; width: 100%;
+  padding-top: 4px;
+}
+.epg-reaction-picker.hidden { display: none; }
+.epg-reaction-pick { padding: 2px 7px; font-size: 0.95rem; }
 
 /* Zrušená účast v přehledu přihlášek (2026-08-25) - řádek zůstává, jen prošedlý a
    přeškrtnutý, ať je vidět historie, ne skrytý/smazaný záznam. */
