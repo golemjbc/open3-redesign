@@ -121,17 +121,28 @@
 
     let currentEventId = '';
 
+    // Akce z roku 2025 (a "Vánoční večírek") proběhly PŘED webovým registračním systémem -
+    // nemají žádný řádek v Akce sheetu, takže je samotné panel-list-events nikdy nevrátí
+    // (2026-08-26, migrace starých galerií z Discordu). Zvlášť dotažené a přidané do
+    // stejného výběru, oddělené <optgroup>, ať jde nahrávat/spravovat fotky i pro ně.
     function loadEventsForSelect() {
-      return fetch(API_BASE + '/api/panel-list-events', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...identityPayload(), include_archived: true }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (!data.ok) throw new Error(data.error || 'Chyba při načítání akcí.');
-          eventSelect.innerHTML = '<option value="">— vyber akci —</option>' +
-            data.events.map(e => `<option value="${e.event_id}">${e.nazev || e.event_id} (${e.event_id})</option>`).join('');
-        });
+      return Promise.all([
+        fetch(API_BASE + '/api/panel-list-events', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...identityPayload(), include_archived: true }),
+        }).then(r => r.json()),
+        fetch(API_BASE + '/api/panel-gallery-legacy-events', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(identityPayload()),
+        }).then(r => r.json()),
+      ]).then(([eventsData, legacyData]) => {
+        if (!eventsData.ok) throw new Error(eventsData.error || 'Chyba při načítání akcí.');
+        const legacyOptions = (legacyData.ok ? legacyData.events : [])
+          .map(e => `<option value="${e.event_id}">${e.nazev} (${e.event_id})</option>`).join('');
+        eventSelect.innerHTML = '<option value="">— vyber akci —</option>' +
+          eventsData.events.map(e => `<option value="${e.event_id}">${e.nazev || e.event_id} (${e.event_id})</option>`).join('') +
+          (legacyOptions ? `<optgroup label="Starší akce (jen Discord, bez záznamu na webu)">${legacyOptions}</optgroup>` : '');
+      });
     }
 
     // Thumbnail přes Google Disk (2026-08-26) - stejný vzorec jako getSmartImageUrl
