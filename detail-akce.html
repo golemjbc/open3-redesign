@@ -88,6 +88,55 @@
           <div class="occupancy-text">Obsazenost: ${obsazenost.text}</div>
         </div>`;
     }
+    // Fotogalerie z proběhlé/probíhající akce (2026-08-26, na žádost) - samostatné
+    // volání, nezávislé na `event` datech (přístup se řeší server-side podle identity -
+    // Rada a skuteční účastníci téhle akce vidí vše, ostatní jen fotky/videa označené
+    // jako veřejné, viz backend/event-gallery). Identita je NEPOVINNÁ - odhlášený
+    // návštěvník dostane jen veřejnou část, žádná chyba.
+    function thumbUrl(fileId, size) { return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size || 500}`; }
+    function driveVideoEmbedUrl(fileId) { return `https://drive.google.com/file/d/${fileId}/preview`; }
+
+    function renderEventGalleryItems(items) {
+      if (!items.length) return '';
+      const groups = new Map();
+      items.forEach(it => {
+        const key = it.podalbum || '';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(it);
+      });
+      const orderedKeys = ['', ...[...groups.keys()].filter(k => k !== '').sort()];
+      return `
+        <div class="event-photo-gallery">
+          <h2>Fotky a videa z akce</h2>
+          ${orderedKeys.filter(k => groups.has(k)).map(key => `
+            <div class="epg-group">
+              ${key ? `<div class="epg-group-title">${key}</div>` : ''}
+              <div class="epg-grid">
+                ${groups.get(key).map(it => it.typ === 'video'
+                  ? `<div class="epg-item epg-video"><iframe src="${driveVideoEmbedUrl(it.drive_file_id_zobrazeni)}" allow="autoplay" loading="lazy"></iframe></div>`
+                  : `<a class="epg-item" href="${thumbUrl(it.drive_file_id_zobrazeni, 1600)}" target="_blank" rel="noopener"><img src="${thumbUrl(it.drive_file_id_zobrazeni)}" loading="lazy" alt=""></a>`
+                ).join('')}
+              </div>
+            </div>
+          `).join('')}
+          <p class="form-hint epg-note">Fotky jsou zmenšené a mají drobný vodoznak. Chceš některou v původním rozlišení bez úprav? Napiš nám.</p>
+        </div>
+      `;
+    }
+
+    function loadEventGallery(eventId) {
+      const placeholder = document.getElementById('event-photo-gallery-placeholder');
+      if (!placeholder) return;
+      const user = getLoggedUser();
+      fetch(API_BASE + '/api/event-gallery', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...(getIdentityPayload(user) || {}), event_id: eventId }),
+      })
+        .then(r => r.json())
+        .then(data => { if (data.ok) placeholder.innerHTML = renderEventGalleryItems(data.items); })
+        .catch(() => {}); // nekritické - stránka funguje i bez galerie
+    }
+
     function formatDateRange(fromStr, toStr) {
       fromStr = (fromStr || '').trim();
       toStr = (toStr || '').trim();
@@ -363,7 +412,11 @@
           <h2>O akci</h2>
           <div class="prose">${event.popis}</div>
         </div>` : ''}
+
+        <div id="event-photo-gallery-placeholder"></div>
       `;
+
+      loadEventGallery(eventId);
 
       // Galerie: scroll -> tečky, klikatelné tečky, šipky
       const galleryMain = document.getElementById('gallery-main');
