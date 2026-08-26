@@ -36,7 +36,7 @@
 
   <section class="section detail-hero">
     <div class="container">
-      <a href="akce.html" class="back-link">← Zpět na seznam akcí</a>
+      <a href="akce.html" class="back-link" id="back-link">← Zpět na seznam akcí</a>
       <div id="page-body">
         <div class="loading-state">Načítám detail akce…</div>
       </div>
@@ -240,7 +240,28 @@
       ]).then(([events, members]) => {
         const event = events.find(ev => ev.event_id === eventId);
         if (!event) {
-          pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena (buď neexistuje, nebo už proběhla - detail akce se zobrazuje jen u nadcházejících akcí, galerie výše ale funguje i pro proběhlé).</div>';
+          // Rozlišení "akce fakt neexistuje" od "akce proběhla" (2026-08-26, na žádost -
+          // matoucí obecné "nebyla nalezena" u proběhlé akce s galerií, + tlačítko zpět
+          // mělo vést na seznam nadcházejících akcí, kde proběhlá akce stejně není).
+          fetch(API_BASE + '/api/event-basic-info', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_id: eventId }),
+          })
+            .then(r => r.json())
+            .then(info => {
+              if (info.ok && info.exists && info.je_probehla) {
+                const backLink = document.getElementById('back-link');
+                backLink.href = 'galerie.html';
+                backLink.textContent = '← Zpět na galerii';
+                pageBody.innerHTML = '<div class="empty-state">Akce „' + (info.nazev || eventId) + '" (' +
+                  formatDateRange(info.datum_od, info.datum_do) + ') už proběhla - detail a přihlášení se zobrazuje jen u nadcházejících akcí. Fotky a videa z akce najdeš níže.</div>';
+              } else {
+                pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena.</div>';
+              }
+            })
+            .catch(() => {
+              pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena.</div>';
+            });
           return;
         }
 
