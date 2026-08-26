@@ -39,6 +39,7 @@
       <div id="page-body">
         <div class="loading-state">Načítám detail akce…</div>
       </div>
+      <div id="event-photo-gallery-placeholder"></div>
     </div>
   </section>
 
@@ -182,6 +183,11 @@
           pageBody.innerHTML = '<div class="empty-state">Akce s ID ' + eventId + ' nebyla nalezena.</div>';
           return;
         }
+
+        // Fotogalerie se načítá NEZÁVISLE na přístupu ke zbytku stránky (viz hasAccess
+        // níže) - veřejně označené fotky má vidět kdokoliv, i ten, kdo nemá právo se na
+        // akci přihlásit/vidět detail, viz backend/event-gallery.
+        loadEventGallery(eventId);
 
         // 🔒 Kontrola oprávnění - stejná logika jako na produkci (přihlášení + discord_role_required)
         const loggedUser = getLoggedUser();
@@ -412,11 +418,7 @@
           <h2>O akci</h2>
           <div class="prose">${event.popis}</div>
         </div>` : ''}
-
-        <div id="event-photo-gallery-placeholder"></div>
       `;
-
-      loadEventGallery(eventId);
 
       // Galerie: scroll -> tečky, klikatelné tečky, šipky
       const galleryMain = document.getElementById('gallery-main');
